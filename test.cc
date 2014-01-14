@@ -16,6 +16,7 @@
 // GNU Library General Public License for more details.
 //
 
+#include <cstdlib> // atoi()
 #include <chrono>
 #include <algorithm>
 #include <stdexcept>
@@ -26,9 +27,9 @@
 
 using namespace std;
 
-int main() {
+int main(int argc, char * argv[]) {
 
-  const int n = 200;
+  const int n = (argc>1) ? atoi(argv[1]) : 200;
   const int n2 = n*2;
 
   unique_ptr<complex<double>[]> A(new complex<double>[n*n]);
