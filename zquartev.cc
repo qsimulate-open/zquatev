@@ -177,10 +177,18 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
   if (info) throw runtime_error("zhbev failed in quaternion diagonalization");
 
   // form the coefficient matrix in D
+#ifdef MKL
   zgemm3m_("N", "N", n2, n, n, 1.0, Q, n2, Cmat.get(), n, 0.0, D, n2);
+#else
+  zgemm_("N", "N", n2, n, n, 1.0, Q, n2, Cmat.get(), n, 0.0, D, n2);
+#endif
 
   for (int i = 0; i != n*n; ++i) Cmat[i] = conj(Cmat[i]);
+#ifdef MKL
   zgemm3m_("N", "N", n2, n, n, 1.0, Q+n*n2, n2, Cmat.get(), n, 0.0, D+n*n2, n2);
+#else
+  zgemm_("N", "N", n2, n, n, 1.0, Q+n*n2, n2, Cmat.get(), n, 0.0, D+n*n2, n2);
+#endif
 }
 
 }

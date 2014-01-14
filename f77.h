@@ -54,9 +54,15 @@ extern "C" {
  void zaxpy_(const int*, const std::complex<double>*, const std::complex<double>*, const int*, std::complex<double>*, const int*);
  void zgemv_(const char*, const int*, const int*, const std::complex<double>*, const std::complex<double>*, const int*, const std::complex<double>*, const int*,
              const std::complex<double>*, std::complex<double>*, const int*);
+#ifdef MKL
  void zgemm3m_(const char* transa, const char* transb, const int* m, const int* n, const int* k,
                const std::complex<double>* alpha, const std::complex<double>* a, const int* lda, const std::complex<double>* b, const int* ldb,
                const std::complex<double>* beta, std::complex<double>* c, const int* ldc);
+#else
+ void zgemm_(const char* transa, const char* transb, const int* m, const int* n, const int* k,
+             const std::complex<double>* alpha, const std::complex<double>* a, const int* lda, const std::complex<double>* b, const int* ldb,
+             const std::complex<double>* beta, std::complex<double>* c, const int* ldc);
+#endif
  void zhbev_(const char*, const char*, const int*, const int*, std::complex<double>*, const int*, double*, std::complex<double>*, const int*,
              std::complex<double>*, double*, int*);
  void zrot_(const int*, std::complex<double>*, const int*, std::complex<double>*, const int*, const double*, const std::complex<double>*);
@@ -139,13 +145,26 @@ namespace {
  void zgemv_(const char* a, const int b, const int c, const std::complex<double> d, const std::unique_ptr<std::complex<double> []>& e, const int f,
              const std::unique_ptr<std::complex<double> []>& g, const int h, const std::complex<double> i, std::unique_ptr<std::complex<double> []>& j, const int k)
              { ::zgemv_(a,&b,&c,&d,e.get(),&f,g.get(),&h,&i,j.get(),&k); }
+#ifdef MKL
  void zgemm3m_(const char* transa, const char* transb, const int m, const int n, const int k,
                const std::complex<double> alpha, const std::complex<double>* a, const int lda, const std::complex<double>* b, const int ldb,
                const std::complex<double> beta, std::complex<double>* c, const int ldc) { ::zgemm3m_(transa,transb,&m,&n,&k,&alpha,a,&lda,b,&ldb,&beta,c,&ldc); }
  void zgemm3m_(const char* transa, const char* transb, const int m, const int n, const int k,
-               const std::complex<double> alpha, const std::unique_ptr<std::complex<double>[]>& a, const int lda, const std::unique_ptr<std::complex<double>[]>& b, const int ldb,
+               const std::complex<double> alpha, const std::unique_ptr<std::complex<double>[]>& a, const int lda,
+               const std::unique_ptr<std::complex<double>[]>& b, const int ldb,
                const std::complex<double> beta, std::unique_ptr<std::complex<double>[]>& c, const int ldc)
                { ::zgemm3m_(transa,transb,&m,&n,&k,&alpha,a.get(),&lda,b.get(),&ldb,&beta,c.get(),&ldc); }
+#else
+ void zgemm_(const char* transa, const char* transb, const int m, const int n, const int k,
+             const std::complex<double> alpha, const std::complex<double>* a, const int lda, const std::complex<double>* b, const int ldb,
+             const std::complex<double> beta, std::complex<double>* c, const int ldc) { ::zgemm_(transa,transb,&m,&n,&k,&alpha,a,&lda,b,&ldb,&beta,c,&ldc); }
+ void zgemm_(const char* transa, const char* transb, const int m, const int n, const int k,
+             const std::complex<double> alpha, const std::unique_ptr<std::complex<double>[]>& a, const int lda,
+             const std::unique_ptr<std::complex<double>[]>& b, const int ldb,
+             const std::complex<double> beta, std::unique_ptr<std::complex<double>[]>& c, const int ldc)
+             { ::zgemm_(transa,transb,&m,&n,&k,&alpha,a.get(),&lda,b.get(),&ldb,&beta,c.get(),&ldc); }
+#endif
+
  void zaxpy_(const int a, const std::complex<double> b, const std::complex<double>* c, const int d, std::complex<double>* e, const int f) { ::zaxpy_(&a,&b,c,&d,e,&f); }
  void zaxpy_(const int a, const std::complex<double> b, const std::unique_ptr<std::complex<double>[]>& c, const int d, std::unique_ptr<std::complex<double>[]>& e,
              const int f) { ::zaxpy_(&a,&b,c.get(),&d,e.get(),&f); }
