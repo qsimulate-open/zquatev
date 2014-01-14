@@ -1,0 +1,7 @@
+Quaternion-Diagonalization
+==========================
+
+Code to diagonalize quaternion matrices using symmetry-adapted eigenvectors.
+
+Goal: Generalized Householder with threading and parallelization that is competitive to MKL's zheev and pzheev(r).
+Status: Competitive with 1 CPU cores up to around (200*2)^2 matrices.
