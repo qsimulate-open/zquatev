@@ -32,6 +32,8 @@ int main(int argc, char * argv[]) {
   const int n = (argc>1) ? atoi(argv[1]) : 200;
   const int n2 = n*2;
 
+  bool printout = (n<=200);
+
   unique_ptr<complex<double>[]> A(new complex<double>[n*n]);
   unique_ptr<complex<double>[]> B(new complex<double>[n*n]);
   unique_ptr<complex<double>[]> C(new complex<double>[n2*n2]);
@@ -70,14 +72,16 @@ int main(int argc, char * argv[]) {
     int info;
     zheev_("V", "U", &n2, C.get(), &n2, eig.get(), work.get(), &lwork, rwork.get(), &info); 
     if (info) throw runtime_error("zheev failed");
-    for (int i = 0; i != n; ++i) {
-      cout << fixed << setw(30) << setprecision(15) << eig[i*2];
-      if (i % 5 == 4) cout << endl;
-    }
-    cout << endl;
-    for (int i = 0; i != n; ++i) {
-      cout << fixed << setw(30) << setprecision(15) << eig[i*2+1];
-      if (i % 5 == 4) cout << endl;
+    if (printout) {
+      for (int i = 0; i != n; ++i) {
+        cout << fixed << setw(30) << setprecision(15) << eig[i*2];
+        if (i % 5 == 4) cout << endl;
+      }
+      cout << endl;
+      for (int i = 0; i != n; ++i) {
+        cout << fixed << setw(30) << setprecision(15) << eig[i*2+1];
+        if (i % 5 == 4) cout << endl;
+      }
     }
   }
 
@@ -87,10 +91,12 @@ int main(int argc, char * argv[]) {
     unique_ptr<double[]> eig(new double[n2]);
     ts::zquatev(n2, D.get(), eig.get()); 
 
-    cout << endl;
-    for (int i = 0; i != n; ++i) {
-      cout << fixed << setw(30) << setprecision(15) << eig[i];
-      if (i % 5 == 4) cout << endl;
+    if (printout) {
+      cout << endl;
+      for (int i = 0; i != n; ++i) {
+        cout << fixed << setw(30) << setprecision(15) << eig[i];
+        if (i % 5 == 4) cout << endl;
+      }
     }
   }
   auto time2 = chrono::high_resolution_clock::now();
