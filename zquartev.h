@@ -29,7 +29,9 @@ namespace ts {
   // (  A   B  )
   // ( -B*  A* )
   //
-  // where A is Hermite and B is anti-Hermite.
+  // where A is Hermite and B is anti-Hermite. Only the left half of the matrix
+  // will be referenced as an input.
+  //
   // This matrix has doubly-degenerate eigenvalues, and there is a set of
   // eivenvectors that has the same symmetry property:
   //
