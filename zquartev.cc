@@ -70,44 +70,49 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
 
       for (int i = 0; i != len; ++i) choutf[i] = conj(hout[i]);
 
+      // 00-1
       zgemv_("T", len, len+1, 1.0, D+k+1+(k)*n2, n2, hout.get(), 1, 0.0, buf.get(), 1); 
       zgeru_(len, len+1, -conj(tau), choutf.get(), 1, buf.get(), 1, D+k+1+(k)*n2, n2);
-      zgerc_(len, len+1, -tau, hout.get(), 1, buf.get(), 1, D+k+n+1+(k+n)*n2, n2);
 
-      zgemv_("T", len, len+1, 1.0, D+k+1+(k+n)*n2, n2, hout.get(), 1, 0.0, buf.get(), 1); 
-      zgeru_(len, len+1, -conj(tau), choutf.get(), 1, buf.get(), 1, D+k+1+(k+n)*n2, n2);
-      zgerc_(len, len+1, tau, hout.get(), 1, buf.get(), 1, D+k+n+1+(k)*n2, n2);
-
+      // 00-2
       zgemv_("N", len+1, len, 1.0, D+(k+1)*n2+(k), n2, choutf.get(), 1, 0.0, buf.get(), 1); 
       zgeru_(len+1, len, -tau, buf.get(), 1, hout.get(), 1, D+(k+1)*n2+(k), n2);
-      conjarray(buf, len+1);
-      zgerc_(len+1, len, -conj(tau), buf.get(), 1, hout.get(), 1, D+(k+n+1)*n2+(k+n), n2);
 
-      zgemv_("N", len+1, len, 1.0, D+(k+1)*n2+(k+n), n2, choutf.get(), 1, 0.0, buf.get(), 1); 
+      // 10-1
+      zgemv_("N", len+1, len, 1.0, D+k+n+(k+1)*n2, n2, choutf.get(), 1, 0.0, buf.get(), 1); 
+      conjarray(buf, len+1);
+      zgerc_(len, len+1, tau, hout.get(), 1, buf.get(), 1, D+k+n+1+(k)*n2, n2);
+
+      // 10-2
+      zgemv_("N", len+1, len, 1.0, D+k+n+(k+1)*n2, n2, choutf.get(), 1, 0.0, buf.get(), 1); 
       zgeru_(len+1, len, -tau, buf.get(), 1, hout.get(), 1, D+(k+1)*n2+(k+n), n2);
-      conjarray(buf, len+1);
-      zgerc_(len+1, len, conj(tau), buf.get(), 1, hout.get(), 1, D+(k+n+1)*n2+(k), n2);
 
-      // Q conj(v) * v^T
+      // 00-2
       zgemv_("N", len+1, len, 1.0, Q+(k+1)*n2+(k), n2, choutf.get(), 1, 0.0, buf.get(), 1); 
       zgeru_(len+1, len, -tau, buf.get(), 1, hout.get(), 1, Q+(k+1)*n2+(k), n2);
-      conjarray(buf, len+1);
-      zgerc_(len+1, len, -conj(tau), buf.get(), 1, hout.get(), 1, Q+(k+n+1)*n2+(k+n), n2);
 
-      // Q v * v^dagger
-      zgemv_("N", len+1, len, 1.0, Q+(k+1)*n2+(k+n), n2, choutf.get(), 1, 0.0, buf.get(), 1); 
+      // 10-2
+      zgemv_("N", len+1, len, 1.0, Q+k+n+(k+1)*n2, n2, choutf.get(), 1, 0.0, buf.get(), 1); 
       zgeru_(len+1, len, -tau, buf.get(), 1, hout.get(), 1, Q+(k+1)*n2+(k+n), n2);
-      conjarray(buf, len+1);
-      zgerc_(len+1, len, conj(tau), buf.get(), 1, hout.get(), 1, Q+(k+n+1)*n2+(k), n2);
+
     }   
 
     // symplectic Givens rotation to clear out D(k+n, k)
     pair<double,complex<double>> gr = givens(D[k+1+k*n2], D[k+n+1+k*n2]);
 
-    zrot_(n2, D+k+1, n2, D+k+n+1, n2, gr.first, gr.second);
+    zrot_(len+1, D+k+1+k*n2, n2, D+k+n+1+k*n2, n2, gr.first, gr.second);
 
-    zrot_(n2, D+(k+1)*n2, 1, D+(k+n+1)*n2, 1, gr.first, conj(gr.second));
-    zrot_(n2, Q+(k+1)*n2, 1, Q+(k+n+1)*n2, 1, gr.first, conj(gr.second));
+    for (int i = 0; i != len+1; ++i)
+      D[(k+1)*n2+k+n+i] = -conj(D[(k+1)*n2+k+n+i]);
+    zrot_(len+1, D+(k+1)*n2+k, 1, D+(k+1)*n2+k+n, 1, gr.first, conj(gr.second));
+    for (int i = 0; i != len+1; ++i)
+      D[(k+1)*n2+k+n+i] = -conj(D[(k+1)*n2+k+n+i]);
+
+    for (int i = 0; i != len+1; ++i)
+      Q[(k+1)*n2+k+n+i] = -conj(Q[(k+1)*n2+k+n+i]);
+    zrot_(len+1, Q+(k+1)*n2+k, 1, Q+(k+1)*n2+k+n, 1, gr.first, conj(gr.second));
+    for (int i = 0; i != len+1; ++i)
+      Q[(k+1)*n2+k+n+i] = -conj(Q[(k+1)*n2+k+n+i]);
 
     // Householder to fix top half in column k
     if (len > 1) {
@@ -116,52 +121,32 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
 
       for (int i = 0; i != len; ++i) choutf[i] = conj(hout[i]);
 
-      // conj(v) * ((-conj(beta) D^T v)^T = - conj(beta) conj(v) * (v^T D)
-      zgemv_("T", len, len+1, 1.0, D+k+n+1+(k)*n2, n2, hout.get(), 1, 0.0, buf.get(), 1); 
-      zgeru_(len, len+1, -conj(tau), choutf.get(), 1, buf.get(), 1, D+k+n+1+(k)*n2, n2);
-      zgerc_(len, len+1, tau, hout.get(), 1, buf.get(), 1, D+k+1+(k+n)*n2, n2);
-
-      zgemv_("T", len, len+1, 1.0, D+k+n+1+(k+n)*n2, n2, hout.get(), 1, 0.0, buf.get(), 1); 
-      zgeru_(len, len+1, -conj(tau), choutf.get(), 1, buf.get(), 1, D+k+n+1+(k+n)*n2, n2);
+      // 00-1
+      zgemv_("C", len, len+1, 1.0, D+k+1+(k)*n2, n2, hout.get(), 1, 0.0, buf.get(), 1); 
       zgerc_(len, len+1, -tau, hout.get(), 1, buf.get(), 1, D+k+1+(k)*n2, n2);
 
-      // D conj(v) * v^T
-      zgemv_("N", len+1, len, 1.0, D+(k+n+1)*n2+(k), n2, choutf.get(), 1, 0.0, buf.get(), 1); 
-      zgeru_(len+1, len, -tau, buf.get(), 1, hout.get(), 1, D+(k+n+1)*n2+(k), n2);
-      conjarray(buf, len+1);
-      zgerc_(len+1, len, conj(tau), buf.get(), 1, hout.get(), 1, D+(k+1)*n2+(k+n), n2);
-
-      zgemv_("N", len+1, len, 1.0, D+(k+n+1)*n2+(k+n), n2, choutf.get(), 1, 0.0, buf.get(), 1); 
-      zgeru_(len+1, len, -tau, buf.get(), 1, hout.get(), 1, D+(k+n+1)*n2+(k+n), n2);
-      conjarray(buf, len+1);
+      // 00-2
+      zgemv_("N", len+1, len, 1.0, D+(k+1)*n2+(k), n2, hout.get(), 1, 0.0, buf.get(), 1); 
       zgerc_(len+1, len, -conj(tau), buf.get(), 1, hout.get(), 1, D+(k+1)*n2+(k), n2);
 
-      // Q conj(v) * v^T
-      zgemv_("N", len+1, len, 1.0, Q+(k+n+1)*n2+(k), n2, choutf.get(), 1, 0.0, buf.get(), 1); 
-      zgeru_(len+1, len, -tau, buf.get(), 1, hout.get(), 1, Q+(k+n+1)*n2+(k), n2);
-      conjarray(buf, len+1);
+      // 01-1
+      zgemv_("T", len, len+1, 1.0, D+k+n+1+(k)*n2, n2, hout.get(), 1, 0.0, buf.get(), 1); 
+      zgeru_(len, len+1, -conj(tau), choutf.get(), 1, buf.get(), 1, D+k+n+1+(k)*n2, n2);
+
+      // 01-2 
+      zgemv_("N", len+1, len, -1.0, D+(k+1)*n2+(k+n), n2, hout.get(), 1, 0.0, buf.get(), 1); 
+      zgerc_(len+1, len, conj(tau), buf.get(), 1, hout.get(), 1, D+(k+1)*n2+(k+n), n2);
+
+      // 00-2
+      zgemv_("N", len+1, len, 1.0, Q+(k+n+1)*n2+(k+n), n2, choutf.get(), 1, 0.0, buf.get(), 1); 
+      zgerc_(len+1, len, -conj(tau), buf.get(), 1, hout.get(), 1, Q+(k+1)*n2+(k), n2);
+
+      // 01-2 
+      zgemv_("N", len+1, len, -1.0, Q+(k+1)*n2+(k+n), n2, hout.get(), 1, 0.0, buf.get(), 1); 
       zgerc_(len+1, len, conj(tau), buf.get(), 1, hout.get(), 1, Q+(k+1)*n2+(k+n), n2);
 
-      zgemv_("N", len+1, len, 1.0, Q+(k+n+1)*n2+(k+n), n2, choutf.get(), 1, 0.0, buf.get(), 1); 
-      zgeru_(len+1, len, -tau, buf.get(), 1, hout.get(), 1, Q+(k+n+1)*n2+(k+n), n2);
-      conjarray(buf, len+1);
-      zgerc_(len+1, len, -conj(tau), buf.get(), 1, hout.get(), 1, Q+(k+1)*n2+(k), n2);
     }   
 
-  }
-
-  for (int i = 0; i != n; ++i) {
-    assert(abs(D[i+n2*i]-D[i+n+n2*(i+n)]) < 1.0e-12);
-    D[i+n2*i] = 0.5*(D[i+n2*i] + D[i+n+n2*(i+n)]);
-    if (i != n-1) {
-      assert(abs(D[i+1+n2*i]-D[i+n+n2*(i+n+1)]) < 1.0e-12);
-      assert(abs(D[i+n+1+n2*(i+n)]-D[i+n2*(i+1)]) < 1.0e-12);
-
-      D[i+1+n2*i]   = 0.5*(D[i+1+n2*i] + D[i+n+n2*(i+n+1)]);
-      D[i+n2*(i+1)] = 0.5*(D[i+n2*(i+1)] + D[i+n+1+n2*(i+n)]);
-      D[i+1+n2*i] = 0.5*(D[i+1+n2*i]+conj(D[i+n2*(i+1)]));
-      D[i+n2*(i+1)] = conj(D[i+1+n2*i]);
-    }   
   }
 
   // diagonalize this tri-diagonal matrix (this step is much cheaper than
@@ -175,6 +160,13 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
       D[i-j+j*n2] = D[i+j*n2];
   zhbev_("V", "L", n, 1, D, n2, eig, Cmat.get(), n, Work, rwork.get(), info);
   if (info) throw runtime_error("zhbev failed in quaternion diagonalization");
+
+  for (int i = 0; i != n; ++i) {
+    for (int j = 0; j != n; ++j) {
+      Q[(n+i)*n2+n+j] = conj(Q[i*n2+j]);
+      Q[(n+i)*n2+j] = -conj(Q[i*n2+n+j]);
+    }
+  }
 
   // form the coefficient matrix in D
 #ifdef MKL
