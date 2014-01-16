@@ -92,8 +92,7 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
 
       // 10-1
       zgemv_("T", len, len+1, -1.0, D1+k+1+(k)*n, n, choutf.get(), 1, 0.0, buf.get(), 1); 
-      conjarray(buf, len+1);
-      zgerc_(len, len+1, tau, hout.get(), 1, buf.get(), 1, D1+k+1+(k)*n, n);
+      zgeru_(len, len+1, tau, hout.get(), 1, buf.get(), 1, D1+k+1+(k)*n, n);
 
       // 10-2
       zgemv_("N", len+1, len, 1.0, D1+k+(k+1)*n, n, choutf.get(), 1, 0.0, buf.get(), 1); 
