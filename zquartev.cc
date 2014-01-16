@@ -52,9 +52,9 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
   const int n = n2/2;
 
   // identity matrix of n2 dimension
-  unique_ptr<complex<double>[]> Qbuf(new complex<double>[n2*n2]);
-  complex<double>* const Q = Qbuf.get();
-  for (int i = 0; i != n2; ++i) Q[i+n2*i] = 1.0;
+  complex<double>* const Q = D + n2*n; 
+  fill_n(Q, n2*n, 0.0);
+  for (int i = 0; i != n; ++i) Q[i+n2*i] = 1.0;
 
   unique_ptr<complex<double>[]> buf(new complex<double>[n2]);
   unique_ptr<complex<double>[]> hout(new complex<double>[n2]);
@@ -152,21 +152,14 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
   // diagonalize this tri-diagonal matrix (this step is much cheaper than
   // the Householder transformation above).
   unique_ptr<complex<double>[]> Cmat(new complex<double>[n2*n2]);
-  complex<double>* Work = D+n*n2;
+  unique_ptr<complex<double>[]> Work(new complex<double>[n]);
   int info;
   unique_ptr<double[]> rwork(new double[n*3]);
   for (int i = 0; i != n; ++i)
     for (int j = 0; j <= i; ++j)
       D[i-j+j*n2] = D[i+j*n2];
-  zhbev_("V", "L", n, 1, D, n2, eig, Cmat.get(), n, Work, rwork.get(), info);
+  zhbev_("V", "L", n, 1, D, n2, eig, Cmat.get(), n, Work.get(), rwork.get(), info);
   if (info) throw runtime_error("zhbev failed in quaternion diagonalization");
-
-  for (int i = 0; i != n; ++i) {
-    for (int j = 0; j != n; ++j) {
-      Q[(n+i)*n2+n+j] = conj(Q[i*n2+j]);
-      Q[(n+i)*n2+j] = -conj(Q[i*n2+n+j]);
-    }
-  }
 
   // form the coefficient matrix in D
 #ifdef MKL
@@ -175,12 +168,13 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
   zgemm_("N", "N", n2, n, n, 1.0, Q, n2, Cmat.get(), n, 0.0, D, n2);
 #endif
 
-  for (int i = 0; i != n*n; ++i) Cmat[i] = conj(Cmat[i]);
-#ifdef MKL
-  zgemm3m_("N", "N", n2, n, n, 1.0, Q+n*n2, n2, Cmat.get(), n, 0.0, D+n*n2, n2);
-#else
-  zgemm_("N", "N", n2, n, n, 1.0, Q+n*n2, n2, Cmat.get(), n, 0.0, D+n*n2, n2);
-#endif
+  // eigen vectors using symmetry
+  for (int i = 0; i != n; ++i) {
+    for (int j = 0; j != n; ++j) {
+       D[j+n2*(i+n)] = -conj(D[j+n+n2*i]); 
+       D[j+n+n2*(i+n)] = conj(D[j+n2*i]); 
+    }
+  }
 }
 
 }
