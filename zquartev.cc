@@ -83,7 +83,7 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
 
       // 00-2
       zgemv_("N", len+1, len, 1.0, D0+(k+1)*n+(k), n, choutf.get(), 1, 0.0, buf.get(), 1); 
-      zgeru_(len+1, len, -tau, buf.get(), 1, hout.get(), 1, D+(k+1)*n+(k), n);
+      zgeru_(len+1, len, -tau, buf.get(), 1, hout.get(), 1, D0+(k+1)*n+(k), n);
 
       // 10-1
       zgemv_("T", len, len+1, -1.0, D1+k+1+(k)*n, n, choutf.get(), 1, 0.0, buf.get(), 1); 
