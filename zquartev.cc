@@ -2,8 +2,8 @@
 // Filename: zquartev.cc
 // Copyright (C) 2013 Toru Shiozaki
 //
-// Author: Toru Shiozaki <shiozaki@northwestern.edu> 
-// Maintainer: TS 
+// Author: Toru Shiozaki <shiozaki@northwestern.edu>
+// Maintainer: TS
 //
 // You can redistribute this program and/or modify
 // it under the terms of the GNU Library General Public License as published by
@@ -31,7 +31,7 @@ static auto givens = [](const complex<double> a, const complex<double> b) {
   const double c = absa == 0.0 ? 0.0 : absa / sqrt(absa*absa + norm(b));
   const complex<double> s = absa == 0.0 ? 1.0 : (a / absa * conj(b) / sqrt(absa*absa + norm(b)));
   return make_pair(c, s);
-};  
+};
 
 static auto householder = [](const complex<double>* const hin, complex<double>* const out, const int len) {
   const bool trivial = abs(real(hin[0])) == 0.0;
@@ -49,7 +49,7 @@ static auto householder = [](const complex<double>* const hin, complex<double>* 
 // implementation...
 
 void zquatev(const int n2, complex<double>* const D, double* const eig) {
-  assert(n2 % 2 == 0); 
+  assert(n2 % 2 == 0);
   const int n = n2/2;
 
   // rearrange data
@@ -62,7 +62,7 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
   }
 
   // identity matrix of n2 dimension
-  complex<double>* const Q0 = D + n2*n; 
+  complex<double>* const Q0 = D + n2*n;
   complex<double>* const Q1 = D + n2*n + n*n;
   fill_n(Q0, n*n, 0.0);
   fill_n(Q1, n*n, 0.0);
@@ -83,26 +83,26 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
       for (int i = 0; i != len; ++i) choutf[i] = conj(hout[i]);
 
       // 00
-      zgemv_("C", len, len+1, 1.0, D0+k+1+(k)*n, n, choutf.get(), 1, 0.0, buf.get(), 1); 
+      zgemv_("C", len, len+1, 1.0, D0+k+1+(k)*n, n, choutf.get(), 1, 0.0, buf.get(), 1);
       zaxpy_(len, -conj(tau)*0.5*zdotc_(len, buf.get()+1, 1, choutf.get(), 1), choutf.get(), 1, buf.get()+1, 1);
       zgerc_(len, len+1, -conj(tau), choutf.get(), 1, buf.get(), 1, D0+k+1+(k)*n, n);
       zgeru_(len+1, len, -tau, buf.get(), 1, hout.get(), 1, D0+(k+1)*n+(k), n);
 
       // 10
-      zgemv_("N", len+1, len, 1.0, D1+k+(k+1)*n, n, choutf.get(), 1, 0.0, buf.get(), 1); 
-      zaxpy_(len, tau*0.5*zdotc_(len, hout.get(), 1, buf.get()+1, 1), choutf.get(), 1, buf.get()+1, 1);
+      zgemv_("N", len+1, len, 1.0, D1+k+(k+1)*n, n, choutf.get(), 1, 0.0, buf.get(), 1);
+      zaxpy_(len, conj(tau)*0.5*zdotc_(len, hout.get(), 1, buf.get()+1, 1), choutf.get(), 1, buf.get()+1, 1);
       zgeru_(len, len+1, tau, hout.get(), 1, buf.get(), 1, D1+k+1+(k)*n, n);
       zgeru_(len+1, len, -tau, buf.get(), 1, hout.get(), 1, D1+(k+1)*n+(k), n);
 
       // 00-2
-      zgemv_("N", n, len, 1.0, Q0+(k+1)*n, n, choutf.get(), 1, 0.0, buf.get(), 1); 
+      zgemv_("N", n, len, 1.0, Q0+(k+1)*n, n, choutf.get(), 1, 0.0, buf.get(), 1);
       zgeru_(n, len, -tau, buf.get(), 1, hout.get(), 1, Q0+(k+1)*n, n);
 
       // 10-2
-      zgemv_("N", n, len, 1.0, Q1+(k+1)*n, n, choutf.get(), 1, 0.0, buf.get(), 1); 
+      zgemv_("N", n, len, 1.0, Q1+(k+1)*n, n, choutf.get(), 1, 0.0, buf.get(), 1);
       zgeru_(n, len, -tau, buf.get(), 1, hout.get(), 1, Q1+(k+1)*n, n);
 
-    }   
+    }
 
     // symplectic Givens rotation to clear out D(k+n, k)
     pair<double,complex<double>> gr = givens(D0[k+1+k*n], D1[k+1+k*n]);
@@ -129,7 +129,7 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
       for (int i = 0; i != len; ++i) choutf[i] = conj(hout[i]);
 
       // 00
-      zgemv_("C", len, len+1, 1.0, D0+k+1+(k)*n, n, hout.get(), 1, 0.0, buf.get(), 1); 
+      zgemv_("C", len, len+1, 1.0, D0+k+1+(k)*n, n, hout.get(), 1, 0.0, buf.get(), 1);
       zaxpy_(len, -tau*0.5*zdotc_(len, hout.get(), 1, buf.get()+1, 1), hout.get(), 1, buf.get()+1, 1);
       zgerc_(len, len+1, -tau, hout.get(), 1, buf.get(), 1, D0+k+1+(k)*n, n);
       zgerc_(len+1, len, -conj(tau), buf.get(), 1, hout.get(), 1, D0+(k+1)*n+(k), n);
@@ -141,14 +141,14 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
       zgerc_(len+1, len, conj(tau), buf.get(), 1, hout.get(), 1, D1+(k+1)*n+(k), n);
 
       // 00-2
-      zgemv_("N", n, len, 1.0, Q0+(k+1)*n, n, hout.get(), 1, 0.0, buf.get(), 1); 
+      zgemv_("N", n, len, 1.0, Q0+(k+1)*n, n, hout.get(), 1, 0.0, buf.get(), 1);
       zgerc_(n, len, -conj(tau), buf.get(), 1, hout.get(), 1, Q0+(k+1)*n, n);
 
-      // 01-2 
-      zgemv_("N", n, len, -1.0, Q1+(k+1)*n, n, hout.get(), 1, 0.0, buf.get(), 1); 
+      // 01-2
+      zgemv_("N", n, len, -1.0, Q1+(k+1)*n, n, hout.get(), 1, 0.0, buf.get(), 1);
       zgerc_(n, len, conj(tau), buf.get(), 1, hout.get(), 1, Q1+(k+1)*n, n);
 
-    }   
+    }
 
   }
 
@@ -176,8 +176,8 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
   // eigen vectors using symmetry
   for (int i = 0; i != n; ++i) {
     for (int j = 0; j != n; ++j) {
-       D[j+n2*(i+n)] = -conj(D[j+n+n2*i]); 
-       D[j+n+n2*(i+n)] = conj(D[j+n2*i]); 
+       D[j+n2*(i+n)] = -conj(D[j+n+n2*i]);
+       D[j+n+n2*(i+n)] = conj(D[j+n2*i]);
     }
   }
 }
