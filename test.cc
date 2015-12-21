@@ -43,8 +43,8 @@ int main(int argc, char * argv[]) {
   srand(32);
   for (int i = 0; i != n; ++i) {
     for (int j = 0; j <= i; ++j) {
-      const array<double,4> t = {{(double)rand()/(double)RAND_MAX, (double)rand()/(double)RAND_MAX,
-                                  (double)rand()/(double)RAND_MAX, (double)rand()/(double)RAND_MAX}};
+      const array<double,4> t = {{rand()%10000 * 0.0001, rand()%10000 * 0.0001,
+                                  rand()%10000 * 0.0001, rand()%10000 * 0.0001}};
       A[j+n*i] = j == i ? t[0] : complex<double>(t[0], t[1]);
       A[i+n*j] = conj(A[j+n*i]); 
       B[j+n*i] = j == i ? 0.0 : complex<double>(t[2], t[3]);
@@ -62,6 +62,7 @@ int main(int argc, char * argv[]) {
   }
   copy_n(C.get(), n2*n2, D.get());
 
+  cout << endl;
   cout << " **** using zheev **** " << endl;
   auto time0 = chrono::high_resolution_clock::now();
   {
@@ -101,6 +102,7 @@ int main(int argc, char * argv[]) {
   }
   auto time2 = chrono::high_resolution_clock::now();
 
+  cout << endl;
   cout << " zheev   : " << setw(10) << setprecision(2) << chrono::duration_cast<chrono::milliseconds>(time1-time0).count()*0.001 << endl;
   cout << " zquartev: " << setw(10) << setprecision(2) << chrono::duration_cast<chrono::milliseconds>(time2-time1).count()*0.001 << endl;
 

@@ -41,7 +41,7 @@ static auto householder = [](const complex<double>* const hin, complex<double>* 
     const double norm = sqrt(real(zdotc_(len, hin, 1, hin, 1)));
     const double sign = real(hin[0])/abs(real(hin[0]));
     out[0] = hin[0] + sign*norm;
-    fac = conj(1.0 / (conj(out[0]) * (sign*norm)));
+    fac = 1.0 / (out[0] * (sign*norm));
   }
   return fac;
 };
@@ -90,7 +90,6 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
 
       // 10
       zgemv_("N", len+1, len, 1.0, D1+k+(k+1)*n, n, choutf.get(), 1, 0.0, buf.get(), 1);
-      zaxpy_(len, conj(tau)*0.5*zdotc_(len, hout.get(), 1, buf.get()+1, 1), choutf.get(), 1, buf.get()+1, 1);
       zgeru_(len, len+1, tau, hout.get(), 1, buf.get(), 1, D1+k+1+(k)*n, n);
       zgeru_(len+1, len, -tau, buf.get(), 1, hout.get(), 1, D1+(k+1)*n+(k), n);
 
@@ -106,7 +105,6 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
 
     // symplectic Givens rotation to clear out D(k+n, k)
     pair<double,complex<double>> gr = givens(D0[k+1+k*n], D1[k+1+k*n]);
-
     zrot_(len+1, D0+k+1+k*n, n, D1+k+1+k*n, n, gr.first, gr.second);
 
     for (int i = 0; i != len+1; ++i)
@@ -136,7 +134,6 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
 
       // 01-1
       zgemv_("T", len, len+1, 1.0, D1+k+1+(k)*n, n, hout.get(), 1, 0.0, buf.get(), 1);
-      zaxpy_(len, tau*0.5*zdotc_(len, choutf.get(), 1, buf.get()+1, 1), hout.get(), 1, buf.get()+1, 1);
       zgeru_(len, len+1, -conj(tau), choutf.get(), 1, buf.get(), 1, D1+k+1+(k)*n, n);
       zgerc_(len+1, len, conj(tau), buf.get(), 1, hout.get(), 1, D1+(k+1)*n+(k), n);
 
