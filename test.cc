@@ -103,8 +103,8 @@ int main(int argc, char * argv[]) {
   auto time2 = chrono::high_resolution_clock::now();
 
   cout << endl;
-  cout << " zheev   : " << setw(10) << setprecision(2) << chrono::duration_cast<chrono::milliseconds>(time1-time0).count()*0.001 << endl;
-  cout << " zquartev: " << setw(10) << setprecision(2) << chrono::duration_cast<chrono::milliseconds>(time2-time1).count()*0.001 << endl;
+  cout << " zheev   : " << setw(10) << fixed << setprecision(2) << chrono::duration_cast<chrono::milliseconds>(time1-time0).count()*0.001 << endl;
+  cout << " zquartev: " << setw(10) << fixed << setprecision(2) << chrono::duration_cast<chrono::milliseconds>(time2-time1).count()*0.001 << endl;
 
   return 0;
 }
