@@ -53,7 +53,7 @@ class SuperMatrix {
     std::array<int, MB> mptr_;
 
   private:
-    void conj_n(std::complex<double>* p, const size_t n) {
+    static void conj_n(std::complex<double>* p, const size_t n) {
       double* dp = reinterpret_cast<double*>(p) + 1;
       for (double* i = dp; i <= dp + 2*n-2; i += 2) *i = -*i;
     }
@@ -87,7 +87,7 @@ class SuperMatrix {
     }
 
     template<size_t iblock, class = typename std::enable_if<(iblock < MB)>::type>
-    void add_column(const std::complex<double>* d, const int ld, const int off = 0) {
+    void append_column(const std::complex<double>* d, const int ld, const int off = 0) {
       assert(mptr_[iblock]+1 <= mmax_);
       for (int nblock = 0; nblock != NB; ++nblock)
         copy_n(d+ld*nblock, nptr_[nblock]-off, block(nblock, iblock)+mptr_[iblock]*nmax_+off);
@@ -95,16 +95,27 @@ class SuperMatrix {
     }
 
     template<size_t iblock, class = typename std::enable_if<(iblock < MB)>::type>
-    void add_column(const SuperMatrix<NB,1>& d) {
-      add_column<iblock>(d.block(0,0), d.nmax());
+    void append_column(const SuperMatrix<NB,1>& d) {
+      append_column<iblock>(d.block(0,0), d.nmax());
     }
 
     template<size_t iblock, class = typename std::enable_if<(iblock < MB)>::type>
-    void add_column_unit(const int off) {
+    void append_column_unit(const int off) {
       assert(mptr_[iblock]+1 <= mmax_);
       for (int nblock = 0; nblock != NB; ++nblock)
         *(block(nblock, iblock)+mptr_[iblock]*nmax_+off) = 1.0;
       mptr_[iblock]++;
+    }
+
+    template<size_t iblock, class = typename std::enable_if<(iblock < MB)>::type>
+    void add_lastcolumn(const std::complex<double>* d, const int ld, const int off = 0, const std::complex<double> a = 1.0) {
+      for (int nblock = 0; nblock != NB; ++nblock)
+        zaxpy_(nptr_[nblock]-off, a, d+ld*nblock, 1, block(nblock, iblock)+(mptr_[iblock]-1)*nmax_+off, 1);
+    }
+
+    template<size_t iblock, class = typename std::enable_if<(iblock < MB)>::type>
+    void add_lastcolumn(const SuperMatrix<NB,1>& d, const std::complex<double> a) {
+      add_lastcolumn<iblock>(d.block(0,0), d.nmax(), 0, a);
     }
 
     template<size_t iblock, class = typename std::enable_if<(iblock < MB)>::type>
@@ -120,7 +131,7 @@ class SuperMatrix {
     }
 
     template<size_t iblock, class = typename std::enable_if<(iblock < NB)>::type>
-    void add_row(std::complex<double>* d, const int ld) {
+    void append_row(std::complex<double>* d, const int ld) {
       assert(nptr_[iblock]+1 <= nmax_);
       for (int mblock = 0; mblock != NB; ++mblock)
         for (int m = 0; m != mptr_[mblock]; ++m)
@@ -129,7 +140,7 @@ class SuperMatrix {
     }
 
     template<size_t iblock, class = typename std::enable_if<(iblock < NB)>::type>
-    void add_row(const int mblock = 0, const int off = 0, const std::complex<double> a = 0.0) {
+    void append_row(const int mblock = 0, const int off = 0, const std::complex<double> a = 0.0) {
       assert(nptr_[iblock]+1 <= nmax_);
       *(block(iblock, mblock)+off*nmax_+nptr_[iblock]) = a;
       nptr_[iblock]++;
@@ -183,6 +194,7 @@ void contract(const char* c1, const char* c2, std::complex<double> a, const Supe
     for (int x = 0; x != X; ++x)
       for (int l = 0; l != loopblock; ++l) {
         assert((transA ? A.nptr(l) : A.mptr(l)) == (transB ? B.mptr(l) : B.nptr(l)));
+        // TODO - many of the matrices are upper triangle... compare the efficiency with ztrmm.
         zgemm3m_(c1, c2, (transA ? A.mptr(x) : A.nptr(x)), (transB ? B.nptr(y) : B.mptr(y)), (transA ? A.nptr(l) : A.mptr(l)),
                  a, (transA ? A.block(l, x) : A.block(x, l)), A.nmax(), (transB ? B.block(y, l) : B.block(l, y)), B.nmax(),
                  1.0, C.block(x,y), C.nmax());

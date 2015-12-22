@@ -126,6 +126,8 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
 
   unique_ptr<complex<double>[]> buf(new complex<double>[n*3]);
   unique_ptr<complex<double>[]> buf2(new complex<double>[n*3]);
+  unique_ptr<complex<double>[]> buf3(new complex<double>[nb*3]);
+  unique_ptr<complex<double>[]> buf4(new complex<double>[nb*3]);
   unique_ptr<complex<double>[]> hout(new complex<double>[n2]);
   unique_ptr<complex<double>[]> choutf(new complex<double>[n2]);
 
@@ -160,7 +162,7 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
         W.write_lastcolumn<0>(choutf.get(), len, 1);
         T.data<0,0>(0,0) = -tau;
       } else {
-        R.add_row<0>();
+        R.append_row<0>();
         SuperMatrix<3,1> x(buf2.get(), nb, 1);
         {
           SuperMatrix<1,1> v(buf.get(), n, 1, n, 1);
@@ -169,14 +171,14 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
         } {
           SuperMatrix<3,1> v(buf.get(), nb, 1);
           contract<false,false>("N", "N", 1.0, T, x, v);
-          T.add_column<0>(v);
-          T.add_row<0>(0, k, -tau);
+          T.append_column<0>(v);
+          T.append_row<0>(0, k, -tau);
         } {
           SuperMatrix<1,1> v(buf.get(), nb, 1);
           contract<false,false>("N", "N", 1.0, S, x, v);
-          S.add_column<0>(v);
+          S.append_column<0>(v);
         }
-        W.add_column<0>(choutf.get(), len, k+1);
+        W.append_column<0>(choutf.get(), len, k+1);
       }
 
       // 00
@@ -229,19 +231,35 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
       R.data<1,0>(0,0) = 1.0;
       S.data<0,1>(0,0) = -sbar;
     } else {
-      SuperMatrix<3,1> x(buf2.get(), nb, 1);
+      SuperMatrix<3,1> x(buf2.get(), nb, 1); // holds W^+ e_j
+      SuperMatrix<3,1> v(buf.get(), nb, 1); // holds TW^+ e_j
       W.cut_row<0>(k+1, x);
-      {
-        SuperMatrix<3,1> v(buf.get(), nb, 1);
-        contract<false,false>("N", "N", 1.0, T, x, v);
-        R.add_column<0>(v);
-        R.add_row<1>(0,k,1.0);
-        v.scale(cbar);
-        T.add_column<1>(v);
-      }
-if (k==1) assert(false);
+      contract<false,false>("N", "N", 1.0, T, x, v);
+
+      // update part of T
+      SuperMatrix<1,1> y(buf3.get(), nb, 1); // holds SW^+ e_j
+      SuperMatrix<3,1> z(buf4.get(), nb, 1); // holds RSW^+ e_j
+      contract<false,false>("N", "N", 1.0, S, x, y);
+      y.conj();
+      contract<false,false>("N", "N", sbar, R, y, z);
+      y.conj();
+      T.append_column<1>(z);
+
+      // update R and S -- ok
+      R.append_column<0>(v);
+      R.append_row<1>(0,k,1.0);
+      y.scale(cbar);
+      S.append_column<1>(y);
+      S.append_row<0>(1, k, -sbar);
+
+      // update the rest of T
+      T.add_lastcolumn<1>(v, cbar);
+      T.append_row<1>(1, k, cbar);
+      // update W
+      W.append_column_unit<1>(k+1);
     }
     print("b", Q0, Q1, T, W, R, S, W2, Y1, Y2, X, n);
+if (k==1) assert(false);
 
     // Householder to fix top half in column k
     if (len > 1) {
