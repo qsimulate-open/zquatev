@@ -90,7 +90,7 @@ class SuperMatrix {
     void append_column(const std::complex<double>* d, const int ld, const int off = 0) {
       assert(mptr_[iblock]+1 <= mmax_);
       for (int nblock = 0; nblock != NB; ++nblock)
-        copy_n(d+ld*nblock, nptr_[nblock]-off, block(nblock, iblock)+mptr_[iblock]*nmax_+off);
+        std::copy_n(d+ld*nblock, nptr_[nblock]-off, block(nblock, iblock)+mptr_[iblock]*nmax_+off);
       mptr_[iblock]++;
     }
 
@@ -121,7 +121,7 @@ class SuperMatrix {
     template<size_t iblock, class = typename std::enable_if<(iblock < MB)>::type>
     void write_lastcolumn(std::complex<double>* d, const int ld, const int off = 0) {
       for (int nblock = 0; nblock != NB; ++nblock)
-        copy_n(d+ld*nblock, nptr_[nblock]-off, block(nblock, iblock)+(mptr_[iblock]-1)*nmax_+off);
+        std::copy_n(d+ld*nblock, nptr_[nblock]-off, block(nblock, iblock)+(mptr_[iblock]-1)*nmax_+off);
     }
 
     template<size_t iblock, class = typename std::enable_if<(iblock < MB)>::type>
