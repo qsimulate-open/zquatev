@@ -38,14 +38,15 @@ using namespace std;
 namespace ts {
 
 // some local functions..
-static auto givens = [](const complex<double> a, const complex<double> b) {
+namespace {
+pair<double,complex<double>> givens(const complex<double> a, const complex<double> b) {
   const double absa = abs(a);
   const double c = absa == 0.0 ? 0.0 : absa / sqrt(absa*absa + norm(b));
   const complex<double> s = absa == 0.0 ? 1.0 : (a / absa * conj(b) / sqrt(absa*absa + norm(b)));
   return make_pair(c, s);
-};
+}
 
-static auto householder = [](const complex<double>* const hin, complex<double>* const out, const int len) {
+complex<double> householder(const complex<double>* const hin, complex<double>* const out, const int len) {
   const bool trivial = abs(real(hin[0])) == 0.0;
   complex<double> fac = 0.0;
   copy_n(hin, len, out);
@@ -56,7 +57,8 @@ static auto householder = [](const complex<double>* const hin, complex<double>* 
     fac = 1.0 / (out[0] * (sign*norm));
   }
   return fac;
-};
+}
+}
 
 
 // TODO Debug
@@ -202,8 +204,6 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
 
     }
 
-    print("a", Q0, Q1, T, W, R, S, W2, Y1, Y2, X, n);
-
     // symplectic Givens rotation to clear out D(k+n, k)
     pair<double,complex<double>> gr = givens(D0[k+1+k*n], D1[k+1+k*n]);
     zrot_(len+1, D0+k+1+k*n, n, D1+k+1+k*n, n, gr.first, gr.second);
@@ -258,8 +258,6 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
       // update W
       W.append_column_unit<1>(k+1);
     }
-    print("b", Q0, Q1, T, W, R, S, W2, Y1, Y2, X, n);
-if (k==1) assert(false);
 
     // Householder to fix top half in column k
     if (len > 1) {
@@ -294,10 +292,28 @@ if (k==1) assert(false);
         T.data<1,2>(0,0) = -conj(tau)*T.data<1,1>(0,0)*hout[0];
         T.data<2,2>(0,0) = -conj(tau);
         S.data<0,2>(0,0) = -conj(tau)*S.data<0,1>(0,0)*hout[0];
+      } else {
+        R.append_row<2>();
+        SuperMatrix<3,1> x(buf2.get(), nb, 1);
+        {
+          SuperMatrix<1,1> v(buf.get(), n, 1, n, 1);
+          v.write_lastcolumn<0>(hout.get(), len, k+1);
+          contract<true, false>("C", "N", -conj(tau), W, v, x);
+        } {
+          SuperMatrix<3,1> v(buf.get(), nb, 1);
+          contract<false,false>("N", "N", 1.0, T, x, v);
+          T.append_column<2>(v);
+          T.append_row<2>(2, k, -conj(tau));
+        } {
+          SuperMatrix<1,1> v(buf.get(), nb, 1);
+          contract<false,false>("N", "N", 1.0, S, x, v);
+          S.append_column<2>(v);
+        }
+        W.append_column<2>(hout.get(), len, k+1);
       }
-      print("c", Q0, Q1, T, W, R, S, W2, Y1, Y2, X, n);
     }
   }
+  print("tridiagonalization", Q0, Q1, T, W, R, S, W2, Y1, Y2, X, n);
 
   // diagonalize this tri-diagonal matrix (this step is much cheaper than
   // the Householder transformation above).
