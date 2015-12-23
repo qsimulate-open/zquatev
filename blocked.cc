@@ -128,8 +128,7 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
 
   unique_ptr<complex<double>[]> buf(new complex<double>[n*3]);
   unique_ptr<complex<double>[]> buf2(new complex<double>[n*3]);
-  unique_ptr<complex<double>[]> buf3(new complex<double>[nb*3]);
-  unique_ptr<complex<double>[]> buf4(new complex<double>[nb*3]);
+  unique_ptr<complex<double>[]> buf3(new complex<double>[nb]);
   unique_ptr<complex<double>[]> hout(new complex<double>[n2]);
   unique_ptr<complex<double>[]> choutf(new complex<double>[n2]);
 
@@ -166,20 +165,20 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
       } else {
         R.append_row<0>();
         SuperMatrix<3,1> x(buf2.get(), nb, 1);
-        {
-          SuperMatrix<1,1> v(buf.get(), n, 1, n, 1);
-          v.write_lastcolumn<0>(choutf.get(), len, k+1);
-          contract<true, false>("C", "N", -tau, W, v, x);
-        } {
-          SuperMatrix<3,1> v(buf.get(), nb, 1);
-          contract<false,false>("N", "N", 1.0, T, x, v);
-          T.append_column<0>(v);
-          T.append_row<0>(0, k, -tau);
-        } {
-          SuperMatrix<1,1> v(buf.get(), nb, 1);
-          contract<false,false>("N", "N", 1.0, S, x, v);
-          S.append_column<0>(v);
-        }
+
+        SuperMatrix<1,1> v(buf.get(), n, 1, n, 1);
+        v.write_lastcolumn<0>(choutf.get(), len, k+1);
+        contract<true, false>("C", "N", -tau, W, v, x);
+
+        SuperMatrix<3,1> v2(buf.get(), nb, 1);
+        contract<false,false>("N", "N", 1.0, T, x, v2);
+        T.append_column<0>(v2);
+        T.append_row<0>(0, k, -tau);
+
+        SuperMatrix<1,1> v3(buf.get(), nb, 1);
+        contract<false,false>("N", "N", 1.0, S, x, v3);
+        S.append_column<0>(v3);
+
         W.append_column<0>(choutf.get(), len, k+1);
       }
 
@@ -231,31 +230,27 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
       R.data<1,0>(0,0) = 1.0;
       S.data<0,1>(0,0) = -sbar;
     } else {
-      SuperMatrix<3,1> x(buf2.get(), nb, 1); // holds W^+ e_j
-      SuperMatrix<3,1> v(buf.get(), nb, 1); // holds TW^+ e_j
+      SuperMatrix<3,1> x(buf2.get(), nb, 1);
+      SuperMatrix<3,1> v(buf.get(), nb, 1);
       W.cut_row<0>(k+1, x);
       contract<false,false>("N", "N", 1.0, T, x, v);
 
-      // update part of T
       SuperMatrix<1,1> y(buf3.get(), nb, 1); // holds SW^+ e_j
-      SuperMatrix<3,1> z(buf4.get(), nb, 1); // holds RSW^+ e_j
       contract<false,false>("N", "N", 1.0, S, x, y);
       y.conj();
-      contract<false,false>("N", "N", sbar, R, y, z);
+      x.reset();
+      contract<false,false>("N", "N", sbar, R, y, x);
       y.conj();
-      T.append_column<1>(z);
+      T.append_column<1>(x);
+      T.add_lastcolumn<1>(v, cbar);
+      T.append_row<1>(1, k, cbar);
 
-      // update R and S -- ok
       R.append_column<0>(v);
       R.append_row<1>(0,k,1.0);
       y.scale(cbar);
       S.append_column<1>(y);
       S.append_row<0>(1, k, -sbar);
 
-      // update the rest of T
-      T.add_lastcolumn<1>(v, cbar);
-      T.append_row<1>(1, k, cbar);
-      // update W
       W.append_column_unit<1>(k+1);
     }
 
@@ -295,20 +290,20 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
       } else {
         R.append_row<2>();
         SuperMatrix<3,1> x(buf2.get(), nb, 1);
-        {
-          SuperMatrix<1,1> v(buf.get(), n, 1, n, 1);
-          v.write_lastcolumn<0>(hout.get(), len, k+1);
-          contract<true, false>("C", "N", -conj(tau), W, v, x);
-        } {
-          SuperMatrix<3,1> v(buf.get(), nb, 1);
-          contract<false,false>("N", "N", 1.0, T, x, v);
-          T.append_column<2>(v);
-          T.append_row<2>(2, k, -conj(tau));
-        } {
-          SuperMatrix<1,1> v(buf.get(), nb, 1);
-          contract<false,false>("N", "N", 1.0, S, x, v);
-          S.append_column<2>(v);
-        }
+
+        SuperMatrix<1,1> v(buf.get(), n, 1, n, 1);
+        v.write_lastcolumn<0>(hout.get(), len, k+1);
+        contract<true, false>("C", "N", -conj(tau), W, v, x);
+
+        SuperMatrix<3,1> v2(buf.get(), nb, 1);
+        contract<false,false>("N", "N", 1.0, T, x, v2);
+        T.append_column<2>(v2);
+        T.append_row<2>(2, k, -conj(tau));
+
+        SuperMatrix<1,1> v3(buf.get(), nb, 1);
+        contract<false,false>("N", "N", 1.0, S, x, v3);
+        S.append_column<2>(v3);
+
         W.append_column<2>(hout.get(), len, k+1);
       }
     }
