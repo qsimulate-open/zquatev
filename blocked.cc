@@ -148,15 +148,15 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
 
         SuperMatrix<1,1> v(buf.get(), n, 1, n, 1);
         v.write_lastcolumn<0>(choutf.get(), len, k+1);
-        contract<true, false>("C", "N", -tau, W, v, x);
+        contract<true>("C", -tau, W, v, x);
 
         SuperMatrix<3,1> v2(buf.get(), nb, 1);
-        contract<false,false>("N", "N", 1.0, T, x, v2);
+        contract<false>("N", 1.0, T, x, v2);
         T.append_column<0>(v2);
         T.append_row<0>(0, k, -tau);
 
         SuperMatrix<1,1> v3(buf.get(), nb, 1);
-        contract<false,false>("N", "N", 1.0, S, x, v3);
+        contract<false>("N", 1.0, S, x, v3);
         S.append_column<0>(v3);
 
         W.append_column<0>(choutf.get(), len, k+1);
@@ -218,13 +218,13 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
       SuperMatrix<3,1> x(buf2.get(), nb, 1);
       SuperMatrix<3,1> v(buf.get(), nb, 1);
       W.cut_row<0>(k+1, x);
-      contract<false,false>("N", "N", 1.0, T, x, v);
+      contract<false>("N", 1.0, T, x, v);
 
       SuperMatrix<1,1> y(buf3.get(), nb, 1); // holds SW^+ e_j
-      contract<false,false>("N", "N", 1.0, S, x, y);
+      contract<false>("N", 1.0, S, x, y);
       y.conj();
       x.reset();
-      contract<false,false>("N", "N", sbar, R, y, x);
+      contract<false>("N", sbar, R, y, x);
       y.conj();
       T.append_column<1>(x);
       T.add_lastcolumn<1>(v, cbar);
@@ -285,22 +285,22 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
 
         SuperMatrix<1,1> v(buf.get(), n, 1, n, 1);
         v.write_lastcolumn<0>(hout.get(), len, k+1);
-        contract<true, false>("C", "N", -conj(tau), W, v, x);
+        contract<true>("C", -conj(tau), W, v, x);
 
         SuperMatrix<3,1> v2(buf.get(), nb, 1);
-        contract<false,false>("N", "N", 1.0, T, x, v2);
+        contract<false>("N", 1.0, T, x, v2);
         T.append_column<2>(v2);
         T.append_row<2>(2, k, -conj(tau));
 
         SuperMatrix<1,1> v3(buf.get(), nb, 1);
-        contract<false,false>("N", "N", 1.0, S, x, v3);
+        contract<false>("N", 1.0, S, x, v3);
         S.append_column<2>(v3);
 
         W.append_column<2>(hout.get(), len, k+1);
       }
     }
   }
-  print("tridiagonalization", Q0, Q1, T, W, R, S, W2, Y1, Y2, X, n);
+//print("tridiagonalization", Q0, Q1, T, W, R, S, W2, Y1, Y2, X, n);
 
   // diagonalize this tri-diagonal matrix (this step is much cheaper than
   // the Householder transformation above).

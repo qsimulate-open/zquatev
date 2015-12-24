@@ -204,6 +204,24 @@ void contract(const char* c1, const char* c2, std::complex<double> a, const Supe
         C.mptr(y) = (transB ? B.nptr(y) : B.mptr(y));
       }
 }
+
+template<bool transA, size_t N, size_t M, size_t K, size_t L, size_t X, size_t Y>
+void contract(const char* c1, std::complex<double> a, const SuperMatrix<N,M>& A, const SuperMatrix<K,L>& B, SuperMatrix<X,Y>& C) {
+  const constexpr int loopblock = transA ? N : M;
+  static_assert((transA ? M : N) == X, "A dim wrong");
+  static_assert(L == Y, "B dim wrong");
+  static_assert((transA ? N : M) == K, "AB dim wrong");
+  assert(B.mmax() == 1 && C.mmax() == 1);
+  for (int y = 0; y != Y; ++y)
+    for (int x = 0; x != X; ++x)
+      for (int l = 0; l != loopblock; ++l) {
+        assert((transA ? A.nptr(l) : A.mptr(l)) == B.nptr(l));
+        // TODO - many of the matrices are upper triangle... compare the efficiency with ztrmm.
+        zgemv_(c1, A.nptr(transA ? l : x) , A.mptr(transA ? x : l), a, (transA ? A.block(l, x) : A.block(x, l)), A.nmax(), B.block(l,y), 1, 1.0, C.block(x,y), 1);
+        C.nptr(x) = (transA ? A.mptr(x) : A.nptr(x));
+        C.mptr(y) = B.mptr(y);
+      }
+}
 }
 
 #endif
