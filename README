@@ -1,7 +1,25 @@
-Quaternion-Diagonalization
-==========================
+ZQUATEV
 
-Code to diagonalize quaternion matrices using symmetry-adapted eigenvectors.
+Diagonalization of quaternionic matrices to yield symmetry-adapted eigenvectors
+===============================================================================
 
-Goal: Generalized Householder with threading and parallelization that is competitive to MKL's zheev and pzheev(r).
-Status: Competitive for any matrices when only 1 CPU core is used.
+Author:
+ Toru Shiozaki (shiozaki@northwestern.edu)
+
+
+Synopsis:
+
+ This program diagonalizes quaternionic matrices,
+
+ (  A  -B* )
+ (  B   A* )
+
+ where A is Hermitian and B is anti-Hermitian. Only the left half of the matrix
+ will be referenced as an input.
+
+ This matrix has doubly-degenerate eigenvalues, and there is a set of
+ eivenvectors that has the same symmetry property:
+
+ (  U  -V* )
+ (  V   U* )
+
