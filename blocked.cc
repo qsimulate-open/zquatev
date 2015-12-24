@@ -37,30 +37,6 @@ using namespace std;
 
 namespace ts {
 
-// some local functions..
-namespace {
-pair<double,complex<double>> givens(const complex<double> a, const complex<double> b) {
-  const double absa = abs(a);
-  const double c = absa == 0.0 ? 0.0 : absa / sqrt(absa*absa + norm(b));
-  const complex<double> s = absa == 0.0 ? 1.0 : (a / absa * conj(b) / sqrt(absa*absa + norm(b)));
-  return make_pair(c, s);
-}
-
-complex<double> householder(const complex<double>* const hin, complex<double>* const out, const int len) {
-  const bool trivial = abs(real(hin[0])) == 0.0;
-  complex<double> fac = 0.0;
-  copy_n(hin, len, out);
-  if (!trivial) {
-    const double norm = sqrt(real(zdotc_(len, hin, 1, hin, 1)));
-    const double sign = real(hin[0])/abs(real(hin[0]));
-    out[0] = hin[0] + sign*norm;
-    fac = 1.0 / (out[0] * (sign*norm));
-  }
-  return fac;
-}
-}
-
-
 // TODO Debug
 void print(string label, const complex<double>* Q0, const complex<double>* Q1,
            const SuperMatrix<3,3>& T, const SuperMatrix<1,3>& W,
@@ -154,8 +130,12 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
   for (int k = 0; k != n-1; ++k) {
     const int len = n-k-1;
     if (len > 1) {
-      complex<double>* const hin = D1+n*k+k+1;
-      complex<double> tau = householder(hin, hout.get(), len);
+      copy_n(D1+n*k+k+2, len-1, hout.get()+1);
+      complex<double> tau;
+      complex<double> alpha = D1[n*k+k+1];
+      hout[0] = 1.0;
+      zlarfg_(len, alpha, hout.get()+1, 1, tau);
+      tau = conj(tau);
 
       for (int i = 0; i != len; ++i) choutf[i] = conj(hout[i]);
 
@@ -201,27 +181,32 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
       zgemv_("N", n, len, 1.0, Q1+(k+1)*n, n, choutf.get(), 1, 0.0, buf.get(), 1);
       zgeru_(n, len, -tau, buf.get(), 1, hout.get(), 1, Q1+(k+1)*n, n);
 
+      // lapack routine returns transformed subdiagonal element
+      assert(abs(alpha - D1[n*k+k+1]) < 1.0e-10);
     }
 
     // symplectic Givens rotation to clear out D(k+n, k)
-    pair<double,complex<double>> gr = givens(D0[k+1+k*n], D1[k+1+k*n]);
-    zrot_(len+1, D0+k+1+k*n, n, D1+k+1+k*n, n, gr.first, gr.second);
+    double c;
+    complex<double> s, dum;
+    zlartg_(D0[k+1+k*n], D1[k+1+k*n], c, s, dum);
+
+    zrot_(len+1, D0+k+1+k*n, n, D1+k+1+k*n, n, c, s);
 
     for (int i = 0; i != len+1; ++i)
       D1[(k+1)*n+k+i] = -conj(D1[(k+1)*n+k+i]);
-    zrot_(len+1, D0+(k+1)*n+k, 1, D1+(k+1)*n+k, 1, gr.first, conj(gr.second));
+    zrot_(len+1, D0+(k+1)*n+k, 1, D1+(k+1)*n+k, 1, c, conj(s));
     for (int i = 0; i != len+1; ++i)
       D1[(k+1)*n+k+i] = -conj(D1[(k+1)*n+k+i]);
 
     for (int i = 0; i != n; ++i)
       Q1[(k+1)*n+i] = -conj(Q1[(k+1)*n+i]);
-    zrot_(n, Q0+(k+1)*n, 1, Q1+(k+1)*n, 1, gr.first, conj(gr.second));
+    zrot_(n, Q0+(k+1)*n, 1, Q1+(k+1)*n, 1, c, conj(s));
     for (int i = 0; i != n; ++i)
       Q1[(k+1)*n+i] = -conj(Q1[(k+1)*n+i]);
 
 
-    const double cbar = -(1.0-gr.first);
-    const complex<double> sbar = conj(gr.second);
+    const double cbar = c-1.0;
+    const complex<double> sbar = conj(s);
     if (k == 0) {
       T.data<0,1>(0,0) = T.data<0,0>(0,0)*cbar*conj(W.data<0,0>(1,0));
       T.data<1,1>(0,0) = cbar;
@@ -256,8 +241,12 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
 
     // Householder to fix top half in column k
     if (len > 1) {
-      complex<double>* const hin = D0+n*k+k+1;
-      complex<double> tau = householder(hin, hout.get(), len);
+      copy_n(D0+n*k+k+2, len-1, hout.get()+1);
+      complex<double> tau;
+      complex<double> alpha = D0[n*k+k+1];
+      hout[0] = 1.0;
+      zlarfg_(len, alpha, hout.get()+1, 1, tau);
+      tau = conj(tau);
 
       for (int i = 0; i != len; ++i) choutf[i] = conj(hout[i]);
 
@@ -279,6 +268,9 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
       // 01-2
       zgemv_("N", n, len, -1.0, Q1+(k+1)*n, n, hout.get(), 1, 0.0, buf.get(), 1);
       zgerc_(n, len, conj(tau), buf.get(), 1, hout.get(), 1, Q1+(k+1)*n, n);
+
+      // lapack routine returns transformed subdiagonal element
+      assert(abs(alpha - D0[n*k+k+1]) < 1.0e-10);
 
       if (k == 0) {
         W.write_lastcolumn<2>(hout.get(), len, 1);

@@ -35,6 +35,7 @@
 #include <iostream>
 #include <iomanip>
 #include <array>
+#include <algorithm>
 #include "f77.h"
 
 template <size_t NB, size_t MB>

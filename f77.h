@@ -87,6 +87,8 @@ extern "C" {
               std::complex<double>*, const int*, std::complex<double>*, const int*,  std::complex<double>*, const int*, double*, int*);
  void zgesdd_(const char*, const int*, const int*, std::complex<double>*, const int*, double*,
               std::complex<double>*, const int*, std::complex<double>*, const int*,  std::complex<double>*, const int*, double*, int*, int*);
+ void zlartg_(const std::complex<double>*, const std::complex<double>*, double*, std::complex<double>*, std::complex<double>*);
+ void zlarfg_(const int*, const std::complex<double>*, std::complex<double>*, const int*, std::complex<double>*);
 }
 
 
@@ -201,7 +203,8 @@ namespace {
              std::complex<double>* h, const int i) { ::zgerc_(&a, &b, &c, d, &e, f, &g, h, &i); }
  void zgeru_(const int a, const int b, const std::complex<double> c, const std::complex<double>* d, const int e, const std::complex<double>* f, const int g,
              std::complex<double>* h, const int i) { ::zgeru_(&a, &b, &c, d, &e, f, &g, h, &i); }
-
+ void zlartg_(const std::complex<double> a, const std::complex<double> b, double& c, std::complex<double>& d, std::complex<double>& e) { ::zlartg_(&a, &b, &c, &d, &e); }
+ void zlarfg_(const int a, std::complex<double>& b, std::complex<double>* c, const int d, std::complex<double>& e) { ::zlarfg_(&a, &b, c, &d, &e); }
 }
 
 #endif
