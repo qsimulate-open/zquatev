@@ -1,4 +1,5 @@
 //
+// ZQUATEV: Diagonalization of quaternionic matrices
 // Copyright (c) 2016, Toru Shiozaki (shiozaki@northwestern.edu)
 // All rights reserved.
 //

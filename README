@@ -6,9 +6,10 @@ Diagonalization of quaternionic matrices to yield symmetry-adapted eigenvectors
 Author:
  Toru Shiozaki (shiozaki@northwestern.edu)
 
+License:
+ FreeBSD
 
 Synopsis:
-
  This program diagonalizes quaternionic matrices,
 
  (  A  -B* )

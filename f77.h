@@ -1,27 +1,31 @@
 //
-// BAGEL - Parallel electron correlation program.
-// Filename: f77.h
-// Copyright (C) 2011 Toru Shiozaki
+// ZQUATEV: Diagonalization of quaternionic matrices
+// Copyright (c) 2013, Toru Shiozaki (shiozaki@northwestern.edu)
+// All rights reserved.
 //
-// Author: Toru Shiozaki <shiozaki@northwestern.edu>
-// Maintainer: Shiozaki group
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
 //
-// This file is part of the BAGEL package.
+// 1. Redistributions of source code must retain the above copyright notice, this
+//    list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
 //
-// The BAGEL package is free software; you can redistribute it and/or modify
-// it under the terms of the GNU Library General Public License as published by
-// the Free Software Foundation; either version 3, or (at your option)
-// any later version.
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+// (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+// LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+// ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// The BAGEL package is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Library General Public License for more details.
-//
-// You should have received a copy of the GNU Library General Public License
-// along with the BAGEL package; see COPYING.  If not, write to
-// the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
-//
+// The views and conclusions contained in the software and documentation are those
+// of the authors and should not be interpreted as representing official policies,
+// either expressed or implied, of the FreeBSD Project.
 //
 
 #ifndef __SRC_UTIL_F77_H
@@ -92,7 +96,6 @@ extern "C" {
 }
 
 
-// BAGEL's interface
 namespace {
 
  void dgemm_(const char* transa, const char* transb, const int m, const int n, const int k,
@@ -205,6 +208,7 @@ namespace {
              std::complex<double>* h, const int i) { ::zgeru_(&a, &b, &c, d, &e, f, &g, h, &i); }
  void zlartg_(const std::complex<double> a, const std::complex<double> b, double& c, std::complex<double>& d, std::complex<double>& e) { ::zlartg_(&a, &b, &c, &d, &e); }
  void zlarfg_(const int a, std::complex<double>& b, std::complex<double>* c, const int d, std::complex<double>& e) { ::zlarfg_(&a, &b, c, &d, &e); }
+
 }
 
 #endif
