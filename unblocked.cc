@@ -1,22 +1,33 @@
 //
-// Filename: zquartev.cc
-// Copyright (C) 2013 Toru Shiozaki
+// Copyright (c) 2013, Toru Shiozaki (shiozaki@northwestern.edu)
+// All rights reserved.
 //
-// Author: Toru Shiozaki <shiozaki@northwestern.edu>
-// Maintainer: TS
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
 //
-// You can redistribute this program and/or modify
-// it under the terms of the GNU Library General Public License as published by
-// the Free Software Foundation; either version 3, or (at your option)
-// any later version.
+// 1. Redistributions of source code must retain the above copyright notice, this
+//    list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Library General Public License for more details.
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+// (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+// LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+// ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//
+// The views and conclusions contained in the software and documentation are those
+// of the authors and should not be interpreted as representing official policies,
+// either expressed or implied, of the FreeBSD Project.
 //
 
-#include "zquartev.h"
+#include "zquatev.h"
 #include "f77.h"
 #include <cassert>
 #include <algorithm>
@@ -24,27 +35,6 @@
 using namespace std;
 
 namespace ts {
-
-// some local functions..
-static auto givens = [](const complex<double> a, const complex<double> b) {
-  const double absa = abs(a);
-  const double c = absa == 0.0 ? 0.0 : absa / sqrt(absa*absa + norm(b));
-  const complex<double> s = absa == 0.0 ? 1.0 : (a / absa * conj(b) / sqrt(absa*absa + norm(b)));
-  return make_pair(c, s);
-};
-
-static auto householder = [](const complex<double>* const hin, complex<double>* const out, const int len) {
-  const bool trivial = abs(real(hin[0])) == 0.0;
-  complex<double> fac = 0.0;
-  copy_n(hin, len, out);
-  if (!trivial) {
-    const double norm = sqrt(real(zdotc_(len, hin, 1, hin, 1)));
-    const double sign = real(hin[0])/abs(real(hin[0]));
-    out[0] = hin[0] + sign*norm;
-    fac = 1.0 / (out[0] * (sign*norm));
-  }
-  return fac;
-};
 
 // implementation...
 
@@ -77,8 +67,12 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
   for (int k = 0; k != n-1; ++k) {
     const int len = n-k-1;
     if (len > 1) {
-      complex<double>* const hin = D1+n*k+k+1;
-      complex<double> tau = householder(hin, hout.get(), len);
+      copy_n(D1+n*k+k+2, len-1, hout.get()+1);
+      complex<double> tau;
+      complex<double> alpha = D1[n*k+k+1];
+      hout[0] = 1.0;
+      zlarfg_(len, alpha, hout.get()+1, 1, tau);
+      tau = conj(tau);
 
       for (int i = 0; i != len; ++i) choutf[i] = conj(hout[i]);
 
@@ -101,28 +95,37 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
       zgemv_("N", n, len, 1.0, Q1+(k+1)*n, n, choutf.get(), 1, 0.0, buf.get(), 1);
       zgeru_(n, len, -tau, buf.get(), 1, hout.get(), 1, Q1+(k+1)*n, n);
 
+      // lapack routine returns transformed subdiagonal element
+      assert(abs(alpha - D1[n*k+k+1]) < 1.0e-10);
     }
 
     // symplectic Givens rotation to clear out D(k+n, k)
-    pair<double,complex<double>> gr = givens(D0[k+1+k*n], D1[k+1+k*n]);
-    zrot_(len+1, D0+k+1+k*n, n, D1+k+1+k*n, n, gr.first, gr.second);
+    double c;
+    complex<double> s, dum;
+    zlartg_(D0[k+1+k*n], D1[k+1+k*n], c, s, dum);
+
+    zrot_(len+1, D0+k+1+k*n, n, D1+k+1+k*n, n, c, s);
 
     for (int i = 0; i != len+1; ++i)
       D1[(k+1)*n+k+i] = -conj(D1[(k+1)*n+k+i]);
-    zrot_(len+1, D0+(k+1)*n+k, 1, D1+(k+1)*n+k, 1, gr.first, conj(gr.second));
+    zrot_(len+1, D0+(k+1)*n+k, 1, D1+(k+1)*n+k, 1, c, conj(s));
     for (int i = 0; i != len+1; ++i)
       D1[(k+1)*n+k+i] = -conj(D1[(k+1)*n+k+i]);
 
     for (int i = 0; i != n; ++i)
       Q1[(k+1)*n+i] = -conj(Q1[(k+1)*n+i]);
-    zrot_(n, Q0+(k+1)*n, 1, Q1+(k+1)*n, 1, gr.first, conj(gr.second));
+    zrot_(n, Q0+(k+1)*n, 1, Q1+(k+1)*n, 1, c, conj(s));
     for (int i = 0; i != n; ++i)
       Q1[(k+1)*n+i] = -conj(Q1[(k+1)*n+i]);
 
     // Householder to fix top half in column k
     if (len > 1) {
-      complex<double>* const hin = D0+n*k+k+1;
-      complex<double> tau = householder(hin, hout.get(), len);
+      copy_n(D0+n*k+k+2, len-1, hout.get()+1);
+      complex<double> tau;
+      complex<double> alpha = D0[n*k+k+1];
+      hout[0] = 1.0;
+      zlarfg_(len, alpha, hout.get()+1, 1, tau);
+      tau = conj(tau);
 
       for (int i = 0; i != len; ++i) choutf[i] = conj(hout[i]);
 
@@ -145,6 +148,8 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
       zgemv_("N", n, len, -1.0, Q1+(k+1)*n, n, hout.get(), 1, 0.0, buf.get(), 1);
       zgerc_(n, len, conj(tau), buf.get(), 1, hout.get(), 1, Q1+(k+1)*n, n);
 
+      // lapack routine returns transformed subdiagonal element
+      assert(abs(alpha - D0[n*k+k+1]) < 1.0e-10);
     }
 
   }

@@ -1,19 +1,30 @@
 //
-// Filename: test.cc 
-// Copyright (C) 2013 Toru Shiozaki
+// Copyright (c) 2013, Toru Shiozaki (shiozaki@northwestern.edu)
+// All rights reserved.
 //
-// Author: Toru Shiozaki <shiozaki@northwestern.edu> 
-// Maintainer: TS 
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
 //
-// You can redistribute this program and/or modify
-// it under the terms of the GNU Library General Public License as published by
-// the Free Software Foundation; either version 3, or (at your option)
-// any later version.
+// 1. Redistributions of source code must retain the above copyright notice, this
+//    list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Library General Public License for more details.
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+// (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+// LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+// ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//
+// The views and conclusions contained in the software and documentation are those
+// of the authors and should not be interpreted as representing official policies,
+// either expressed or implied, of the FreeBSD Project.
 //
 
 #include <cstdlib> // atoi()
@@ -22,7 +33,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <iomanip>
-#include "zquartev.h" 
+#include "zquatev.h"
 #include "f77.h"
 
 using namespace std;
@@ -46,9 +57,9 @@ int main(int argc, char * argv[]) {
       const array<double,4> t = {{rand()%10000 * 0.0001, rand()%10000 * 0.0001,
                                   rand()%10000 * 0.0001, rand()%10000 * 0.0001}};
       A[j+n*i] = j == i ? t[0] : complex<double>(t[0], t[1]);
-      A[i+n*j] = conj(A[j+n*i]); 
+      A[i+n*j] = conj(A[j+n*i]);
       B[j+n*i] = j == i ? 0.0 : complex<double>(t[2], t[3]);
-      B[i+n*j] = -B[j+n*i]; 
+      B[i+n*j] = -B[j+n*i];
     }
   }
 
@@ -71,7 +82,7 @@ int main(int argc, char * argv[]) {
     unique_ptr<double[]> rwork(new double[lwork]);
     unique_ptr<complex<double>[]> work(new complex<double>[lwork]);
     int info;
-    zheev_("V", "U", &n2, C.get(), &n2, eig.get(), work.get(), &lwork, rwork.get(), &info); 
+    zheev_("V", "U", &n2, C.get(), &n2, eig.get(), work.get(), &lwork, rwork.get(), &info);
     if (info) throw runtime_error("zheev failed");
     if (printout) {
       for (int i = 0; i != n; ++i) {
@@ -90,7 +101,7 @@ int main(int argc, char * argv[]) {
   auto time1 = chrono::high_resolution_clock::now();
   {
     unique_ptr<double[]> eig(new double[n2]);
-    ts::zquatev(n2, D.get(), eig.get()); 
+    ts::zquatev(n2, D.get(), eig.get());
 
     if (printout) {
       cout << endl;

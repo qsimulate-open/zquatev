@@ -11,7 +11,8 @@ LDFLAGS  = $(CXXFLAGS) $(LIBS)
 
 all: test.x
 
-test.x: zquartev.o test.o
+test.x: unblocked.o test.o
+#test.x: blocked.o test.o
 	$(LD) $(LDFLAGS) $^ -o $@
 
 %.o: %.cc

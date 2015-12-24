@@ -1,9 +1,9 @@
 //
-// Filename: zquartev.h
+// Filename: zquatev.h
 // Copyright (C) 2013 Toru Shiozaki
 //
-// Author: Toru Shiozaki <shiozaki@northwestern.edu> 
-// Maintainer: TS 
+// Author: Toru Shiozaki <shiozaki@northwestern.edu>
+// Maintainer: TS
 //
 // You can redistribute this program and/or modify
 // it under the terms of the GNU Library General Public License as published by
@@ -16,8 +16,8 @@
 // GNU Library General Public License for more details.
 //
 
-#ifndef __TS_ZQUARTEV_H
-#define __TS_ZQUARTEV_H
+#ifndef __TS_ZQUATEV_H
+#define __TS_ZQUATEV_H
 
 #include <memory>
 #include <complex>
@@ -43,7 +43,7 @@ namespace ts {
 
   // TODO: efficiency, threading, and parallelization...
   // Goal: make it competitive with MKL's zheev with threading, and with pzheev(r) in parallel.
-  // 
+  //
   // The current implementation is based on matlab code in arXiv:1203.6151v4
   // with a tiny bit of improvement on efficiency
   //

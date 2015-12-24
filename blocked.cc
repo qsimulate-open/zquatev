@@ -27,11 +27,10 @@
 // either expressed or implied, of the FreeBSD Project.
 //
 
-#include "zquartev.h"
+#include "zquatev.h"
 #include "f77.h"
-#include <cassert>
 #include "supermat.h"
-#include <algorithm>
+#include <cassert>
 
 using namespace std;
 
