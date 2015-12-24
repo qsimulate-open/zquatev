@@ -1,19 +1,30 @@
 //
-// Filename: zquatev.h
-// Copyright (C) 2013 Toru Shiozaki
+// Copyright (c) 2013, Toru Shiozaki (shiozaki@northwestern.edu)
+// All rights reserved.
 //
-// Author: Toru Shiozaki <shiozaki@northwestern.edu>
-// Maintainer: TS
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
 //
-// You can redistribute this program and/or modify
-// it under the terms of the GNU Library General Public License as published by
-// the Free Software Foundation; either version 3, or (at your option)
-// any later version.
+// 1. Redistributions of source code must retain the above copyright notice, this
+//    list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Library General Public License for more details.
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+// (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+// LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+// ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//
+// The views and conclusions contained in the software and documentation are those
+// of the authors and should not be interpreted as representing official policies,
+// either expressed or implied, of the FreeBSD Project.
 //
 
 #ifndef __TS_ZQUATEV_H
@@ -26,26 +37,17 @@ namespace ts {
 
   // Diagonalize a quaternion matrix:
   //
-  // (  A   B  )
-  // ( -B*  A* )
+  // (  A  -B* )
+  // (  B   A* )
   //
-  // where A is Hermite and B is anti-Hermite. Only the left half of the matrix
+  // where A is Hermitian and B is anti-Hermitian. Only the left half of the matrix
   // will be referenced as an input.
   //
   // This matrix has doubly-degenerate eigenvalues, and there is a set of
   // eivenvectors that has the same symmetry property:
   //
-  // (  U   V  )
-  // ( -V*  U* )
-  //
-  // The function zquatev is an implementation that works sort of fine with
-  // one CPU core.
-
-  // TODO: efficiency, threading, and parallelization...
-  // Goal: make it competitive with MKL's zheev with threading, and with pzheev(r) in parallel.
-  //
-  // The current implementation is based on matlab code in arXiv:1203.6151v4
-  // with a tiny bit of improvement on efficiency
+  // (  U  -V* )
+  // (  V   U* )
   //
   extern void zquatev(const int n2, std::complex<double>* const D, double* const eig);
 }

@@ -31,12 +31,13 @@
 #ifndef __SUPERMATRIX_H
 #define __SUPERMATRIX_H
 
+#include "f77.h"
+#include <cassert>
 #include <complex>
 #include <iostream>
 #include <iomanip>
 #include <array>
 #include <algorithm>
-#include "f77.h"
 
 template <size_t NB, size_t MB>
 class SuperMatrix {
