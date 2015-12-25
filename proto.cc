@@ -165,29 +165,29 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
       SuperMatrix<3,1> y1(work1_3n, nb, 1);
       contract<true> ("C", 1.0, W, d, y1);
       SuperMatrix<3,1> y2(work2_3nb, nb, 1);
-      contract<true> ("C", 1.0, T, y1, y2);
+      contract_tr<true>("C", 1.0, T, y1, y2, work4_nb);
       contract<false>("N", 1.0, W, y2, d);
       SuperMatrix<1,1> y3(work3_nb, nb, 1);
-      contract<true> ("C", 1.0, R, y1, y3);
+      contract_tr<true>("C", 1.0, R, y1, y3, work4_nb);
       y3.conj();
       y2.reset();
-      contract<true> ("C", 1.0, S, y3, y2);
+      contract_tr<true>("C", 1.0, S, y3, y2, work4_nb);
       SuperMatrix<1,1> y4(work1_3n, n, 1);
       contract<false>("N", 1.0, W, y2, y4);
       y4.conj();
 
       SuperMatrix<3,1> y5(work2_3nb, nb, 1);
-      contract<true> ("T", 1.0, W, e, y5);
+      contract<true>("T", 1.0, W, e, y5);
       e.add_lastcolumn<0>(y4);
 
       SuperMatrix<3,1> y5x(work1_3n, y5);
       SuperMatrix<1,1> y6(work3_nb, nb, 1);
-      contract<true> ("T", 1.0, R, y5x, y6);
+      contract_tr<true>("T", 1.0, R, y5x, y6, work4_nb);
       SuperMatrix<3,1> y7(work2_3nb, nb, 1);
-      contract<true> ("C", 1.0, S, y6, y7);
+      contract_tr<true>("C", 1.0, S, y6, y7, work4_nb);
       contract<false>("N", -1.0, W, y7, d);
       y7.reset();
-      contract<true> ("T", 1.0, T, y5x, y7);
+      contract_tr<true>("T", 1.0, T, y5x, y7, work4_nb);
       y7.conj();
       SuperMatrix<1,1> y8(work1_3n, n, 1);
       contract<false>("N", 1.0, W, y7, y8);
