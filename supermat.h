@@ -39,6 +39,13 @@
 #include <array>
 #include <algorithm>
 
+namespace {
+void conj_n(std::complex<double>* p, const size_t n) {
+  double* dp = reinterpret_cast<double*>(p) + 1;
+  for (double* i = dp; i <= dp + 2*n-2; i += 2) *i = -*i;
+}
+}
+
 template <size_t NB, size_t MB>
 class SuperMatrix {
   protected:
@@ -54,18 +61,22 @@ class SuperMatrix {
     std::array<int, NB> nptr_;
     std::array<int, MB> mptr_;
 
-  private:
-    static void conj_n(std::complex<double>* p, const size_t n) {
-      double* dp = reinterpret_cast<double*>(p) + 1;
-      for (double* i = dp; i <= dp + 2*n-2; i += 2) *i = -*i;
-    }
-
   public:
-    SuperMatrix(std::complex<double>* d, const int nm, const int mm, const int nst = 1, const int mst = 1)
+    SuperMatrix(std::complex<double>* d, const int nm, const int mm, const int nst = 1, const int mst = 1, const bool init = true)
         : data_(d), nmax_(nm), mmax_(mm) {
       std::fill(nptr_.begin(), nptr_.end(), nst);
       std::fill(mptr_.begin(), mptr_.end(), mst);
-      std::fill_n(data_, nmax_*mmax_*NB*MB, 0.0);
+      if (init)
+        std::fill_n(data_, nmax_*mmax_*NB*MB, 0.0);
+    }
+
+    SuperMatrix(std::complex<double>* d, const int nm, const int mm, const std::array<int, NB> nptr, const std::array<int, NB> mptr)
+        : data_(d), nmax_(nm), mmax_(mm), nptr_(nptr), mptr_(mptr) {
+    }
+
+    template<int iblock, class = typename std::enable_if<(iblock < MB)>::type>
+    SuperMatrix<NB,1> slice_column() {
+      return SuperMatrix<NB,1>(block(0,iblock), nmax_, mmax_, nptr_, {{mptr_[iblock]}});
     }
 
     template<size_t I, size_t J, class = typename std::enable_if<(I < NB and J < MB)>::type>
@@ -116,7 +127,8 @@ class SuperMatrix {
     }
 
     template<size_t iblock, class = typename std::enable_if<(iblock < MB)>::type>
-    void add_lastcolumn(const SuperMatrix<NB,1>& d, const std::complex<double> a) {
+    void add_lastcolumn(const SuperMatrix<NB,1>& d, const std::complex<double> a = 1.0) {
+      assert(d.mptr(0) == 1);
       add_lastcolumn<iblock>(d.block(0,0), d.nmax(), 0, a);
     }
 

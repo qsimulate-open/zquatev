@@ -144,8 +144,62 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
 
     // prepare the k-th column using compact WY-like representation
     if (k > 0) {
-//    W.cut_row<0>(k+1, x);
+      SuperMatrix<1,1> d(D0+k*n, n, 1, n, 1, false);
+      SuperMatrix<1,1> e(D1+k*n, n, 1, n, 1, false);
+      {
+      SuperMatrix<3,1> x(work2_3nb, nb, 1, nb, 1);
+      W.cut_row<0>(k, x);
+W.print();
+cout << "==" << endl;
+x.print();
+      contract<false>("N", 1.0, YD, x, d);
+      contract<false>("N", 1.0, YE, x, e);
 
+      x.conj();
+      SuperMatrix<1,1> y(work1_3n, n, 1);
+      contract<false>("N",  1.0, ZE, x, y);
+      y.conj();
+      d.add_lastcolumn<0>(y);
+      y.reset();
+      contract<false>("N", -1.0, ZD, x, y);
+      y.conj();
+      e.add_lastcolumn<0>(y);
+      }{
+      SuperMatrix<3,1> y1(work1_3n, nb, 1); // Y1 = W^+ d
+      contract<true> ("C", 1.0, W, d, y1);
+      SuperMatrix<3,1> y2(work2_3nb, nb, 1);
+      contract<true> ("C", 1.0, T, y1, y2); // Y2 = T^+ W^+ d
+      contract<false>("N", 1.0, W, y2, d);
+      SuperMatrix<1,1> y3(work3_nb, nb, 1);
+      contract<true> ("C", 1.0, R, y1, y3); // Y3 = R^+ W^+ d
+      y3.conj();
+      y2.reset();
+      contract<true> ("C", 1.0, S, y3, y2); // Y2 = S^+(R^+ W^+ d)^*
+      SuperMatrix<1,1> y4(work1_3n, n, 1);
+      contract<false>("N", 1.0, W, y2, y4); // Y4 = WS^+(R^+ W^+ d)^*
+      y4.conj();                            // Y4 = W^* S^T R^+ W^+ d
+      e.add_lastcolumn<0>(y4);
+      }{
+      SuperMatrix<3,1> y5(work1_3n, nb, 1);
+      contract<true> ("T", 1.0, W, e, y5);  // Y5 = W^T e
+      SuperMatrix<1,1> y6(work3_nb, nb, 1);
+      contract<true> ("T", 1.0, R, y5, y6); // Y6 = R^T W^T e
+      SuperMatrix<3,1> y7(work2_3nb, nb, 1);
+      contract<true> ("C", 1.0, S, y6, y7); // Y7 = S^+ R^T W^T e
+      contract<false>("N", -1.0, W, y7, d);
+      y7.reset();
+      contract<true> ("T", 1.0, T, y5, y7); // Y7 = T^T W^T e
+      y7.conj();                            // Y7 = (T^T W^T e)^*
+      SuperMatrix<1,1> y8(work1_3n, n, 1);
+      contract<false>("N", 1.0, W, y7, y8); // Y8 = W(T^T W^T e)^*
+      y8.conj();                            // Y8 = W^* T^T W^T e
+      e.add_lastcolumn<0>(y8);
+      }
+cout << "print d" << endl;
+d.print();
+cout << "print e" << endl;
+e.print();
+assert(false);
     }
 
     complex<double> alpha = D1[n*k+k+1];
@@ -160,10 +214,10 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
       if (k == 0) {
         W.write_lastcolumn<0>(dnow, len, 1);
         T.data<0,0>(0,0) = -tau;
-        zgemv_("N", n, n-1, 1.0, D0+n, n, dnow, 1, 0.0, YD.block(0,0), 1);
-        zgemv_("N", n, n-1, 1.0, D1+n, n, dnow, 1, 0.0, YE.block(0,0), 1);
+        zgemv_("N", n, n-1, -tau, D0+n, n, dnow, 1, 0.0, YD.block(0,0), 1);
+        zgemv_("N", n, n-1, -tau, D1+n, n, dnow, 1, 0.0, YE.block(0,0), 1);
         // update D0
-        zaxpy_(n-1, -conj(tau*YD.data<0,0>(0,0)), dnow, 1, D0+1, 1);
+        zaxpy_(n-1, conj(YD.data<0,0>(0,0)), dnow, 1, D0+1, 1);
       } else {
         R.append_row<0>();
         SuperMatrix<3,1> x(work2_3nb, nb, 1);
@@ -172,7 +226,7 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
         v.write_lastcolumn<0>(dnow, len, k+1);
         contract<true>("C", -tau, W, v, x);
 
-        SuperMatrix<3,1> v2(work3_nb, nb, 1);
+        SuperMatrix<3,1> v2(work1_3n, nb, 1);
         contract_tr<false>("N", 1.0, T, x, v2, work4_nb);
         T.append_column<0>(v2);
         T.append_row<0>(0, k, -tau);
@@ -184,12 +238,16 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
         W.append_column<0>(dnow, len, k+1);
       }
     }
+X.reset();
+contract<false,true>("N", "C", 1.0, YD, W, X);
+X.print();
 
     double c;
     complex<double> s, dum;
     zlartg_(D0[k+1+k*n], alpha, c, s, dum);
     assert(abs(-conj(s)*D0[k+1+k*n]+c*alpha) < 1.0e-10);
     D0[k+1+k*n] = c*D0[k+1+k*n] + s*alpha;
+cout << c << " " << s << endl;
 
     const double cbar = c-1.0;
     const complex<double> sbar = conj(s);
@@ -212,6 +270,21 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
       zaxpy_(n,        cbar, D1+n, 1, YE.block(0,1), 1);
       zaxpy_(n, -conj(sbar), D0+n, 1, ZD.block(0,1), 1);
       zaxpy_(n, -conj(sbar), D1+n, 1, ZE.block(0,1), 1);
+//debug
+X.reset();
+contract<false,true>("N", "C", 1.0, YD, W, X);
+ZE.conj();
+contract<false,true>("N", "C", 1.0, ZE, W, X);
+ZE.conj();
+cout << "aa" << endl;
+X.print();
+X.reset();
+contract<false,true>("N", "C", 1.0, YE, W, X);
+ZD.conj();
+contract<false,true>("N", "C", -1.0, ZD, W, X);
+ZD.conj();
+cout << "aa2" << endl;
+X.print();
     } else {
       SuperMatrix<3,1> x(work2_3nb, nb, 1);
       SuperMatrix<3,1> v(work4_nb, nb, 1);
@@ -253,14 +326,29 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
         T.data<2,2>(0,0) = -ctau;
         S.data<0,2>(0,0) = -ctau*S.data<0,1>(0,0);
 
-        zgemv_("N", n, n-1, 1.0, D0+n, n, dnow, 1, 0.0, YD.block(0,2), 1);
-        zgemv_("N", n, n-1, 1.0, D1+n, n, dnow, 1, 0.0, YE.block(0,2), 1);
+        zgemv_("N", n, n-1, -ctau, D0+n, n, dnow, 1, 0.0, YD.block(0,2), 1);
+        zgemv_("N", n, n-1, -ctau, D1+n, n, dnow, 1, 0.0, YE.block(0,2), 1);
         YD.add_lastcolumn<2>(YD.slice_column<0>(), zz);
         YE.add_lastcolumn<2>(YE.slice_column<0>(), zz);
         YD.add_lastcolumn<2>(YD.slice_column<1>(), -ctau);
         YE.add_lastcolumn<2>(YE.slice_column<1>(), -ctau);
         ZD.add_lastcolumn<2>(ZD.slice_column<1>(), -conj(ctau));
         ZE.add_lastcolumn<2>(ZE.slice_column<1>(), -conj(ctau));
+//debug
+X.reset();
+contract<false,true>("N", "C", 1.0, YD, W, X);
+ZE.conj();
+contract<false,true>("N", "C", 1.0, ZE, W, X);
+ZE.conj();
+cout << "bb" << endl;
+X.print();
+X.reset();
+contract<false,true>("N", "C", 1.0, YE, W, X);
+ZD.conj();
+contract<false,true>("N", "C", -1.0, ZD, W, X);
+ZD.conj();
+cout << "bb2" << endl;
+X.print();
       } else {
         R.append_row<2>();
         SuperMatrix<3,1> x(work2_3nb, nb, 1);
@@ -282,7 +370,6 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
       }
       dnow[0] = alpha2;
     }
-assert(false);
   }
   print("tridiagonalization", Q0, Q1, T, W, R, S, W2, Y1, Y2, X, n);
 
