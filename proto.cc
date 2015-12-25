@@ -140,8 +140,6 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
   SuperMatrix<1,1> Y2(_Y2.get(), n, n);
 
   for (int k = 0; k != n-1; ++k) {
-    const int len = n-k-1;
-
     // prepare the k-th column using compact WY-like representation
     if (k > 0) {
       SuperMatrix<1,1> d(D0+k*n, n, 1, n, 1, false);
@@ -195,9 +193,10 @@ cout << "print d" << endl;
 d.print();
 cout << "print e" << endl;
 e.print();
-assert(false);
+cout << "====" << endl;
     }
 
+    const int len = n-k-1;
     complex<double> alpha = D1[n*k+k+1];
     if (len > 1) {
       complex<double>* dnow = D1+n*k+k+1;
@@ -212,7 +211,6 @@ assert(false);
         T.data<0,0>(0,0) = -tau;
         zgemv_("N", n, n-1, -tau, D0+n, n, dnow, 1, 0.0, YD.block(0,0), 1);
         zgemv_("N", n, n-1, -tau, D1+n, n, dnow, 1, 0.0, YE.block(0,0), 1);
-        // update D0
         zaxpy_(n-1, conj(YD.data<0,0>(0,0)), dnow, 1, D0+1, 1);
       } else {
         R.append_row<0>();
@@ -225,22 +223,54 @@ assert(false);
         SuperMatrix<3,1> v2(work1_3n, nb, 1);
         contract_tr<false>("N", 1.0, T, x, v2, work4_nb);
         T.append_column<0>(v2);
-        T.append_row<0>(0, k, -tau);
+        T.append_row<0,0>(k, -tau);
 
         SuperMatrix<1,1> v3(work3_nb, nb, 1);
         contract_tr<false>("N", 1.0, S, x, v3, work4_nb);
         S.append_column<0>(v3);
-
         W.append_column<0>(dnow, len, k+1);
+
+        SuperMatrix<1,1> yx(work1_3n, n, 1);
+        contract<false>("N", 1.0, YD, x, yx);
+        YD.append_column<0>();
+        zgemv_("N", n, len, -tau, D0+n*(k+1), n, dnow, 1, 0.0, YD.ptr<0,0>(0,k), 1);
+        zaxpy_(len, -conj(tau)*zdotc_(len, dnow, 1, D0+n*k+k+1, 1), dnow, 1, D0+n*k+k+1, 1);
+        YD.add_lastcolumn<0>(yx);
+
+        yx.reset();
+        contract<false>("N", 1.0, YE, x, yx);
+        YE.append_column<0>(yx);
+        zgemv_("N", n, len, -tau, D1+n*(k+1), n, dnow, 1, 1.0, YE.ptr<0,0>(0,k), 1);
+        yx.reset();
+        contract<false>("N", 1.0, ZD, x, yx);
+        ZD.append_column<0>(yx);
+        yx.reset();
+        contract<false>("N", 1.0, ZE, x, yx);
+        ZE.append_column<0>(yx);
       }
     }
+X.reset();
+contract<false,true>("N", "C", 1.0, YD, W, X);
+contract<false,true>("N", "C", 1.0, ZE, W, X);
+cout << "aa" << endl;
+X.print();
+X.reset();
+contract<false,true>("N", "C", 1.0, YE, W, X);
+contract<false,true>("N", "C", -1.0, ZD, W, X);
+cout << "aa2" << endl;
+X.print();
 
     double c;
     complex<double> s, dum;
+cout << "input " << endl;
+cout << D0[k+1+k*n]  << endl;
+cout << alpha << endl;
     zlartg_(D0[k+1+k*n], alpha, c, s, dum);
     assert(abs(-conj(s)*D0[k+1+k*n]+c*alpha) < 1.0e-10);
     D0[k+1+k*n] = c*D0[k+1+k*n] + s*alpha;
 
+cout << c << " " << s << endl;
+if (k==1) assert(false);
     const double cbar = c-1.0;
     const complex<double> sbar = conj(s);
     if (k == 0) {
@@ -291,15 +321,15 @@ X.print();
       y.conj();
       T.append_column<1>(x);
       T.add_lastcolumn<1>(v, cbar);
-      T.append_row<1>(1, k, cbar);
+      T.append_row<1,1>(k, cbar);
 
       R.append_column<0>(v);
-      R.append_row<1>(0,k,1.0);
+      R.append_row<1,0>(k,1.0);
       y.scale(cbar);
       S.append_column<1>(y);
-      S.append_row<0>(1, k, -sbar);
+      S.append_row<0,1>(k, -sbar);
 
-      W.append_column_unit<1>(k+1);
+      W.append_column<1>(k+1, 1.0);
     }
 
     // Householder to fix top half in column k
@@ -348,7 +378,7 @@ X.print();
         SuperMatrix<3,1> v2(buf.get(), nb, 1);
         contract_tr<false>("N", 1.0, T, x, v2, work4_nb);
         T.append_column<2>(v2);
-        T.append_row<2>(2, k, -ctau);
+        T.append_row<2,2>(k, -ctau);
 
         SuperMatrix<1,1> v3(buf.get(), nb, 1);
         contract_tr<false>("N", 1.0, S, x, v3, work4_nb);

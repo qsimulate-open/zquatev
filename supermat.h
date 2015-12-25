@@ -89,6 +89,8 @@ class SuperMatrix {
 
     template<size_t I, size_t J, class = typename std::enable_if<(I < NB and J < MB)>::type>
     std::complex<double>& data(const int n, const int m) { return *(block(I, J) + n + nmax_*m); }
+    template<size_t I, size_t J, class = typename std::enable_if<(I < NB and J < MB)>::type>
+    std::complex<double>* ptr(const int n, const int m) { return block(I, J) + n + nmax_*m; }
 
     std::complex<double>* block(const int i, const int j) { return data_+area()*(i+NB*j); }
     const std::complex<double>* block(const int i, const int j) const { return data_+area()*(i+NB*j); }
@@ -120,11 +122,10 @@ class SuperMatrix {
       append_column<iblock>(d.block(0,0), d.nmax());
     }
 
-    template<size_t iblock, class = typename std::enable_if<(iblock < MB)>::type>
-    void append_column_unit(const int off) {
-      assert(mptr_[iblock]+1 <= mmax_);
-      for (int nblock = 0; nblock != NB; ++nblock)
-        *(block(nblock, iblock)+mptr_[iblock]*nmax_+off) = 1.0;
+    template<size_t iblock, size_t nblock = 0, class = typename std::enable_if<(iblock < MB)>::type>
+    void append_column(const int off = 0, const std::complex<double> a = 0.0) {
+      assert(mptr_[iblock]+1 <= nmax_);
+      *(block(nblock, iblock)+off+nmax_*mptr_[iblock]) = a;
       mptr_[iblock]++;
     }
 
@@ -161,8 +162,8 @@ class SuperMatrix {
       nptr_[iblock]++;
     }
 
-    template<size_t iblock, class = typename std::enable_if<(iblock < NB)>::type>
-    void append_row(const int mblock = 0, const int off = 0, const std::complex<double> a = 0.0) {
+    template<size_t iblock, size_t mblock = 0, class = typename std::enable_if<(iblock < NB)>::type>
+    void append_row(const int off = 0, const std::complex<double> a = 0.0) {
       assert(nptr_[iblock]+1 <= nmax_);
       *(block(iblock, mblock)+off*nmax_+nptr_[iblock]) = a;
       nptr_[iblock]++;

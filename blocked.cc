@@ -155,7 +155,7 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
         SuperMatrix<3,1> v2(buf.get(), nb, 1);
         contract_tr<false>("N", 1.0, T, x, v2, work);
         T.append_column<0>(v2);
-        T.append_row<0>(0, k, -tau);
+        T.append_row<0,0>(k, -tau);
 
         SuperMatrix<1,1> v3(buf.get(), nb, 1);
         contract_tr<false>("N", 1.0, S, x, v3, work);
@@ -210,10 +210,10 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
     const double cbar = c-1.0;
     const complex<double> sbar = conj(s);
     if (k == 0) {
-      T.data<0,1>(0,0) = T.data<0,0>(0,0)*cbar*conj(W.data<0,0>(1,0));
+      T.data<0,1>(0,0) = T.data<0,0>(0,0)*cbar;
       T.data<1,1>(0,0) = cbar;
       W.write_lastcolumn<1>(0,1);
-      R.data<0,0>(0,0) = T.data<0,0>(0,0)*conj(W.data<0,0>(1,0));
+      R.data<0,0>(0,0) = T.data<0,0>(0,0);
       R.data<1,0>(0,0) = 1.0;
       S.data<0,1>(0,0) = -sbar;
     } else {
@@ -230,15 +230,15 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
       y.conj();
       T.append_column<1>(x);
       T.add_lastcolumn<1>(v, cbar);
-      T.append_row<1>(1, k, cbar);
+      T.append_row<1,1>(k, cbar);
 
       R.append_column<0>(v);
-      R.append_row<1>(0,k,1.0);
+      R.append_row<1,0>(k,1.0);
       y.scale(cbar);
       S.append_column<1>(y);
-      S.append_row<0>(1, k, -sbar);
+      S.append_row<0,1>(k, -sbar);
 
-      W.append_column_unit<1>(k+1);
+      W.append_column<1>(k+1, 1.0);
     }
 
     // Householder to fix top half in column k
@@ -292,7 +292,7 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
         SuperMatrix<3,1> v2(buf.get(), nb, 1);
         contract_tr<false>("N", 1.0, T, x, v2, work);
         T.append_column<2>(v2);
-        T.append_row<2>(2, k, -conj(tau));
+        T.append_row<2,2>(k, -conj(tau));
 
         SuperMatrix<1,1> v3(buf.get(), nb, 1);
         contract_tr<false>("N", 1.0, S, x, v3, work);
