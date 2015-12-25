@@ -74,6 +74,14 @@ class SuperMatrix {
         : data_(d), nmax_(nm), mmax_(mm), nptr_(nptr), mptr_(mptr) {
     }
 
+    SuperMatrix(std::complex<double>* d, const SuperMatrix<NB,MB>& o)
+        : data_(d), nmax_(o.nmax_), mmax_(o.mmax_), nptr_(o.nptr_), mptr_(o.mptr_) {
+      for (int m = 0; m != MB; ++m)
+        for (int n = 0; n != NB; ++n)
+          for (int j = 0; j != mptr_[m]; ++j)
+            std::copy_n(o.block(n,m)+j*nmax_, nptr_[n], block(n,m)+j*nmax_);
+    }
+
     template<int iblock, class = typename std::enable_if<(iblock < MB)>::type>
     SuperMatrix<NB,1> slice_column() {
       return SuperMatrix<NB,1>(block(0,iblock), nmax_, mmax_, nptr_, {{mptr_[iblock]}});
@@ -214,6 +222,8 @@ void contract(const char* c1, const char* c2, std::complex<double> a, const Supe
       }
       C.nptr(x) = (transA ? A.mptr(x) : A.nptr(x));
       C.mptr(y) = (transB ? B.nptr(y) : B.mptr(y));
+      assert(C.nptr(x) <= C.nmax());
+      assert(C.mptr(y) <= C.mmax());
     }
 }
 
@@ -232,6 +242,8 @@ void contract(const char* c1, std::complex<double> a, const SuperMatrix<N,M>& A,
       }
       C.nptr(x) = (transA ? A.mptr(x) : A.nptr(x));
       C.mptr(y) = B.mptr(y);
+      assert(C.nptr(x) <= C.nmax());
+      assert(C.mptr(y) <= C.mmax());
     }
 }
 
@@ -257,6 +269,8 @@ void contract_tr(const char* c1, std::complex<double> a, const SuperMatrix<N,M>&
       }
       C.nptr(x) = (transA ? A.mptr(x) : A.nptr(x));
       C.mptr(y) = B.mptr(y);
+      assert(C.nptr(x) <= C.nmax());
+      assert(C.mptr(y) <= C.mmax());
     }
 }
 

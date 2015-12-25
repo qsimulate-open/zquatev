@@ -146,12 +146,9 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
     if (k > 0) {
       SuperMatrix<1,1> d(D0+k*n, n, 1, n, 1, false);
       SuperMatrix<1,1> e(D1+k*n, n, 1, n, 1, false);
-      {
+
       SuperMatrix<3,1> x(work2_3nb, nb, 1, nb, 1);
       W.cut_row<0>(k, x);
-W.print();
-cout << "==" << endl;
-x.print();
       contract<false>("N", 1.0, YD, x, d);
       contract<false>("N", 1.0, YE, x, e);
 
@@ -164,37 +161,39 @@ x.print();
       contract<false>("N", -1.0, ZD, x, y);
       y.conj();
       e.add_lastcolumn<0>(y);
-      }{
-      SuperMatrix<3,1> y1(work1_3n, nb, 1); // Y1 = W^+ d
+
+      SuperMatrix<3,1> y1(work1_3n, nb, 1);
       contract<true> ("C", 1.0, W, d, y1);
       SuperMatrix<3,1> y2(work2_3nb, nb, 1);
-      contract<true> ("C", 1.0, T, y1, y2); // Y2 = T^+ W^+ d
+      contract<true> ("C", 1.0, T, y1, y2);
       contract<false>("N", 1.0, W, y2, d);
       SuperMatrix<1,1> y3(work3_nb, nb, 1);
-      contract<true> ("C", 1.0, R, y1, y3); // Y3 = R^+ W^+ d
+      contract<true> ("C", 1.0, R, y1, y3);
       y3.conj();
       y2.reset();
-      contract<true> ("C", 1.0, S, y3, y2); // Y2 = S^+(R^+ W^+ d)^*
+      contract<true> ("C", 1.0, S, y3, y2);
       SuperMatrix<1,1> y4(work1_3n, n, 1);
-      contract<false>("N", 1.0, W, y2, y4); // Y4 = WS^+(R^+ W^+ d)^*
-      y4.conj();                            // Y4 = W^* S^T R^+ W^+ d
+      contract<false>("N", 1.0, W, y2, y4);
+      y4.conj();
+
+      SuperMatrix<3,1> y5(work2_3nb, nb, 1);
+      contract<true> ("T", 1.0, W, e, y5);
       e.add_lastcolumn<0>(y4);
-      }{
-      SuperMatrix<3,1> y5(work1_3n, nb, 1);
-      contract<true> ("T", 1.0, W, e, y5);  // Y5 = W^T e
+
+      SuperMatrix<3,1> y5x(work1_3n, y5);
       SuperMatrix<1,1> y6(work3_nb, nb, 1);
-      contract<true> ("T", 1.0, R, y5, y6); // Y6 = R^T W^T e
+      contract<true> ("T", 1.0, R, y5x, y6);
       SuperMatrix<3,1> y7(work2_3nb, nb, 1);
-      contract<true> ("C", 1.0, S, y6, y7); // Y7 = S^+ R^T W^T e
+      contract<true> ("C", 1.0, S, y6, y7);
       contract<false>("N", -1.0, W, y7, d);
       y7.reset();
-      contract<true> ("T", 1.0, T, y5, y7); // Y7 = T^T W^T e
-      y7.conj();                            // Y7 = (T^T W^T e)^*
+      contract<true> ("T", 1.0, T, y5x, y7);
+      y7.conj();
       SuperMatrix<1,1> y8(work1_3n, n, 1);
-      contract<false>("N", 1.0, W, y7, y8); // Y8 = W(T^T W^T e)^*
-      y8.conj();                            // Y8 = W^* T^T W^T e
+      contract<false>("N", 1.0, W, y7, y8);
+      y8.conj();
       e.add_lastcolumn<0>(y8);
-      }
+
 cout << "print d" << endl;
 d.print();
 cout << "print e" << endl;
@@ -238,16 +237,12 @@ assert(false);
         W.append_column<0>(dnow, len, k+1);
       }
     }
-X.reset();
-contract<false,true>("N", "C", 1.0, YD, W, X);
-X.print();
 
     double c;
     complex<double> s, dum;
     zlartg_(D0[k+1+k*n], alpha, c, s, dum);
     assert(abs(-conj(s)*D0[k+1+k*n]+c*alpha) < 1.0e-10);
     D0[k+1+k*n] = c*D0[k+1+k*n] + s*alpha;
-cout << c << " " << s << endl;
 
     const double cbar = c-1.0;
     const complex<double> sbar = conj(s);
