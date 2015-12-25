@@ -152,14 +152,11 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
       contract<false>("N", 1.0, YD, x, d);
       contract<false>("N", 1.0, YE, x, e);
 
-      x.conj();
       SuperMatrix<1,1> y(work1_3n, n, 1);
       contract<false>("N",  1.0, ZE, x, y);
-      y.conj();
       d.add_lastcolumn<0>(y);
       y.reset();
       contract<false>("N", -1.0, ZD, x, y);
-      y.conj();
       e.add_lastcolumn<0>(y);
 
       SuperMatrix<3,1> y1(work1_3n, nb, 1);
@@ -259,25 +256,25 @@ assert(false);
       auto YE0 = YE.slice_column<0>();
       YD.add_lastcolumn<1>(YD0,  cbar);
       YE.add_lastcolumn<1>(YE0,  cbar);
-      ZD.add_lastcolumn<1>(YD0, -conj(sbar));
-      ZE.add_lastcolumn<1>(YE0, -conj(sbar));
-      zaxpy_(n,        cbar, D0+n, 1, YD.block(0,1), 1);
-      zaxpy_(n,        cbar, D1+n, 1, YE.block(0,1), 1);
-      zaxpy_(n, -conj(sbar), D0+n, 1, ZD.block(0,1), 1);
-      zaxpy_(n, -conj(sbar), D1+n, 1, ZE.block(0,1), 1);
+      zaxpy_(n, cbar, D0+n, 1, YD.block(0,1), 1);
+      zaxpy_(n, cbar, D1+n, 1, YE.block(0,1), 1);
+      SuperMatrix<1,1> yd0b(work1_3n,   YD0);
+      SuperMatrix<1,1> ye0b(work1_3n+n, YE0);
+      zaxpy_(n, 1.0, D0+n, 1, yd0b.block(0,0), 1);
+      zaxpy_(n, 1.0, D1+n, 1, ye0b.block(0,0), 1);
+      yd0b.conj();
+      ye0b.conj();
+      ZD.add_lastcolumn<1>(yd0b, -sbar);
+      ZE.add_lastcolumn<1>(ye0b, -sbar);
 //debug
 X.reset();
 contract<false,true>("N", "C", 1.0, YD, W, X);
-ZE.conj();
 contract<false,true>("N", "C", 1.0, ZE, W, X);
-ZE.conj();
 cout << "aa" << endl;
 X.print();
 X.reset();
 contract<false,true>("N", "C", 1.0, YE, W, X);
-ZD.conj();
 contract<false,true>("N", "C", -1.0, ZD, W, X);
-ZD.conj();
 cout << "aa2" << endl;
 X.print();
     } else {
@@ -327,21 +324,17 @@ X.print();
         YE.add_lastcolumn<2>(YE.slice_column<0>(), zz);
         YD.add_lastcolumn<2>(YD.slice_column<1>(), -ctau);
         YE.add_lastcolumn<2>(YE.slice_column<1>(), -ctau);
-        ZD.add_lastcolumn<2>(ZD.slice_column<1>(), -conj(ctau));
-        ZE.add_lastcolumn<2>(ZE.slice_column<1>(), -conj(ctau));
+        ZD.add_lastcolumn<2>(ZD.slice_column<1>(), -ctau);
+        ZE.add_lastcolumn<2>(ZE.slice_column<1>(), -ctau);
 //debug
 X.reset();
 contract<false,true>("N", "C", 1.0, YD, W, X);
-ZE.conj();
 contract<false,true>("N", "C", 1.0, ZE, W, X);
-ZE.conj();
 cout << "bb" << endl;
 X.print();
 X.reset();
 contract<false,true>("N", "C", 1.0, YE, W, X);
-ZD.conj();
 contract<false,true>("N", "C", -1.0, ZD, W, X);
-ZD.conj();
 cout << "bb2" << endl;
 X.print();
       } else {
