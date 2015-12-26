@@ -235,27 +235,27 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
     const complex<double> sbar = conj(s);
     if (k == 0) {
       assert(abs(W.data<0,0>(1,0)-1.0)<1.0e-10);
-      T.data<0,1>(0,0) = T.data<0,0>(0,0)*cbar;
-      T.data<1,1>(0,0) = cbar;
-      W.data<0,1>(1,0) = 1.0;
+      T.data<0,2>(0,0) = T.data<0,0>(0,0)*cbar;
+      T.data<2,2>(0,0) = cbar;
+      W.data<0,2>(1,0) = 1.0;
       R.data<0,0>(0,0) = T.data<0,0>(0,0);
-      R.data<1,0>(0,0) = 1.0;
-      S.data<0,1>(0,0) = -sbar;
+      R.data<2,0>(0,0) = 1.0;
+      S.data<0,2>(0,0) = -sbar;
 
       auto YD0 = YD.slice_column<0>();
       auto YE0 = YE.slice_column<0>();
-      YD.add_lastcolumn<1>(YD0,  cbar);
-      YE.add_lastcolumn<1>(YE0,  cbar);
-      zaxpy_(n, cbar, D0+ld, 1, YD.block(0,1), 1);
-      zaxpy_(n, cbar, D1+ld, 1, YE.block(0,1), 1);
+      YD.add_lastcolumn<2>(YD0,  cbar);
+      YE.add_lastcolumn<2>(YE0,  cbar);
+      zaxpy_(n, cbar, D0+ld, 1, YD.block(0,2), 1);
+      zaxpy_(n, cbar, D1+ld, 1, YE.block(0,2), 1);
       SuperMatrix<1,1> yd0b(work1_3n,   YD0);
       SuperMatrix<1,1> ye0b(work1_3n+n, YE0);
       zaxpy_(n, 1.0, D0+ld, 1, yd0b.block(0,0), 1);
       zaxpy_(n, 1.0, D1+ld, 1, ye0b.block(0,0), 1);
       yd0b.conj();
       ye0b.conj();
-      ZD.add_lastcolumn<1>(yd0b, -sbar);
-      ZE.add_lastcolumn<1>(ye0b, -sbar);
+      ZD.add_lastcolumn<2>(yd0b, -sbar);
+      ZE.add_lastcolumn<2>(ye0b, -sbar);
     } else {
       SuperMatrix<3,1> x(work2_3nb, nb, 1);
       W.cut_row<0>(k+1, x);
@@ -264,29 +264,29 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
       SuperMatrix<1,1> zx(work1_3n+n, n, 1);
       contract<_N>(1.0, YD, x, yx);
       contract<_N>(1.0, ZD, x, zx);
-      ZD.append_column<1>();
-      YD.append_column<1>();
-      ZD.add_lastcolumn<1>(zx, cbar);
+      ZD.append_column<2>();
+      YD.append_column<2>();
+      ZD.add_lastcolumn<2>(zx, cbar);
       zx.conj();
-      YD.add_lastcolumn<1>(zx, sbar);
+      YD.add_lastcolumn<2>(zx, sbar);
       zaxpy_(n, 1.0, D0+(k+1)*ld, 1, yx.block(0,0), 1);
-      YD.add_lastcolumn<1>(yx, cbar);
+      YD.add_lastcolumn<2>(yx, cbar);
       yx.conj();
-      ZD.add_lastcolumn<1>(yx, -sbar);
+      ZD.add_lastcolumn<2>(yx, -sbar);
 
       yx.reset();
       zx.reset();
       contract<_N>(1.0, YE, x, yx);
       contract<_N>(1.0, ZE, x, zx);
-      ZE.append_column<1>();
-      YE.append_column<1>();
-      ZE.add_lastcolumn<1>(zx, cbar);
+      ZE.append_column<2>();
+      YE.append_column<2>();
+      ZE.add_lastcolumn<2>(zx, cbar);
       zx.conj();
-      YE.add_lastcolumn<1>(zx, sbar);
+      YE.add_lastcolumn<2>(zx, sbar);
       zaxpy_(n, 1.0, D1+(k+1)*ld, 1, yx.block(0,0), 1);
-      YE.add_lastcolumn<1>(yx, cbar);
+      YE.add_lastcolumn<2>(yx, cbar);
       yx.conj();
-      ZE.add_lastcolumn<1>(yx, -sbar);
+      ZE.add_lastcolumn<2>(yx, -sbar);
 
       SuperMatrix<3,1> v(work1_3n, nb, 1);
       contract_tr<_N>(1.0, T, x, v, work4_nb);
@@ -296,16 +296,16 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
       SuperMatrix<3,1> z(work2_3nb, nb, 1);
       contract_tr<_N>(sbar, R, y, z, work4_nb);
       y.conj();
-      T.append_column<1>(z);
-      T.add_lastcolumn<1>(v, cbar);
-      T.append_row<1,1>(k, cbar);
+      T.append_column<2>(z);
+      T.add_lastcolumn<2>(v, cbar);
+      T.append_row<2,2>(k, cbar);
 
       R.append_column<0>(v);
-      R.append_row<1,0>(k,1.0);
+      R.append_row<2,0>(k,1.0);
       y.scale(cbar);
-      S.append_column<1>(y);
-      S.append_row<0,1>(k, -sbar);
-      W.append_column<1>(k+1, 1.0);
+      S.append_column<2>(y);
+      S.append_row<0,2>(k, -sbar);
+      W.append_column<2>(k+1, 1.0);
     }
 
     if (len > 1) {
@@ -316,23 +316,23 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
       zlarfg_(len, alpha2, dnow+1, 1, ctau);
 
       if (k == 0) {
-        W.write_lastcolumn<2>(dnow, len, 1);
+        W.write_lastcolumn<1>(dnow, len, 1);
         const complex<double> zz = -ctau*zdotc_(len, W.block(0,0)+1, 1, dnow, 1);
-        T.data<0,2>(0,0) = zz*T.data<0,0>(0,0) -ctau*T.data<0,1>(0,0);
-        T.data<1,2>(0,0) = -ctau*T.data<1,1>(0,0);
-        T.data<2,2>(0,0) = -ctau;
-        S.data<0,2>(0,0) = -ctau*S.data<0,1>(0,0);
+        T.data<0,1>(0,0) = zz*T.data<0,0>(0,0) -ctau*T.data<0,2>(0,0);
+        T.data<2,1>(0,0) = -ctau*T.data<2,2>(0,0);
+        T.data<1,1>(0,0) = -ctau;
+        S.data<0,1>(0,0) = -ctau*S.data<0,2>(0,0);
 
-        zgemv_("N", n, n-1, -ctau, D0+ld, ld, dnow, 1, 0.0, YD.block(0,2), 1);
-        zgemv_("N", n, n-1, -ctau, D1+ld, ld, dnow, 1, 0.0, YE.block(0,2), 1);
-        YD.add_lastcolumn<2>(YD.slice_column<0>(), zz);
-        YE.add_lastcolumn<2>(YE.slice_column<0>(), zz);
-        YD.add_lastcolumn<2>(YD.slice_column<1>(), -ctau);
-        YE.add_lastcolumn<2>(YE.slice_column<1>(), -ctau);
-        ZD.add_lastcolumn<2>(ZD.slice_column<1>(), -ctau);
-        ZE.add_lastcolumn<2>(ZE.slice_column<1>(), -ctau);
+        zgemv_("N", n, n-1, -ctau, D0+ld, ld, dnow, 1, 0.0, YD.block(0,1), 1);
+        zgemv_("N", n, n-1, -ctau, D1+ld, ld, dnow, 1, 0.0, YE.block(0,1), 1);
+        YD.add_lastcolumn<1>(YD.slice_column<0>(), zz);
+        YE.add_lastcolumn<1>(YE.slice_column<0>(), zz);
+        YD.add_lastcolumn<1>(YD.slice_column<2>(), -ctau);
+        YE.add_lastcolumn<1>(YE.slice_column<2>(), -ctau);
+        ZD.add_lastcolumn<1>(ZD.slice_column<2>(), -ctau);
+        ZE.add_lastcolumn<1>(ZE.slice_column<2>(), -ctau);
       } else {
-        R.append_row<2>();
+        R.append_row<1>();
         SuperMatrix<3,1> x(work2_3nb, nb, 1);
 
         SuperMatrix<1,1> v(work1_3n, n, 1, n, 1);
@@ -341,28 +341,28 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
 
         SuperMatrix<3,1> v2(work1_3n, nb, 1);
         contract_tr<_N>(1.0, T, x, v2, work4_nb);
-        T.append_column<2>(v2);
-        T.append_row<2,2>(k, -ctau);
+        T.append_column<1>(v2);
+        T.append_row<1,1>(k, -ctau);
 
         SuperMatrix<1,1> v3(work3_nb, nb, 1);
         contract_tr<_N>(1.0, S, x, v3, work4_nb);
-        S.append_column<2>(v3);
-        W.append_column<2>(dnow, len, k+1);
+        S.append_column<1>(v3);
+        W.append_column<1>(dnow, len, k+1);
 
         SuperMatrix<1,1> yx(work1_3n, n, 1);
         contract<_N>(1.0, YD, x, yx);
-        YD.append_column<2>(yx);
-        zgemv_("N", n, len, -ctau, D0+(k+1)*ld, ld, dnow, 1, 1.0, YD.ptr<0,2>(0,k), 1);
+        YD.append_column<1>(yx);
+        zgemv_("N", n, len, -ctau, D0+(k+1)*ld, ld, dnow, 1, 1.0, YD.ptr<0,1>(0,k), 1);
         yx.reset();
         contract<_N>(1.0, YE, x, yx);
-        YE.append_column<2>(yx);
-        zgemv_("N", n, len, -ctau, D1+(k+1)*ld, ld, dnow, 1, 1.0, YE.ptr<0,2>(0,k), 1);
+        YE.append_column<1>(yx);
+        zgemv_("N", n, len, -ctau, D1+(k+1)*ld, ld, dnow, 1, 1.0, YE.ptr<0,1>(0,k), 1);
         yx.reset();
         contract<_N>(1.0, ZD, x, yx);
-        ZD.append_column<2>(yx);
+        ZD.append_column<1>(yx);
         yx.reset();
         contract<_N>(1.0, ZE, x, yx);
-        ZE.append_column<2>(yx);
+        ZE.append_column<1>(yx);
       }
       dnow[0] = alpha2;
     }
