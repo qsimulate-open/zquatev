@@ -46,7 +46,8 @@ int main(int argc, char * argv[]) {
   const int extra = 5;
   const int nld = (n+extra)*2;
 
-  bool printout = (n<=200);
+//bool printout = (n<=200);
+  bool printout = false;
 
   unique_ptr<complex<double>[]> A(new complex<double>[n*n]);
   unique_ptr<complex<double>[]> B(new complex<double>[n*n]);
@@ -81,13 +82,10 @@ int main(int argc, char * argv[]) {
   auto time0 = chrono::high_resolution_clock::now();
   {
     unique_ptr<double[]> eig(new double[n2]);
-    int lwork = -1;
     unique_ptr<double[]> rwork(new double[3*n-2]);
-    complex<double> lworkopt;
-    int info;
-    zheev_("V", "U", &n2, C.get(), &nld, eig.get(), &lworkopt, &lwork, rwork.get(), &info);
-    lwork = static_cast<int>(lworkopt.real());
+    const int lwork = n*10;
     unique_ptr<complex<double>[]> work(new complex<double>[lwork]);
+    int info;
     zheev_("V", "U", &n2, C.get(), &nld, eig.get(), work.get(), &lwork, rwork.get(), &info);
     if (info) throw runtime_error("zheev failed");
     if (printout) {
