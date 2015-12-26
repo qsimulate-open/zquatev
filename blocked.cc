@@ -41,28 +41,28 @@ namespace ts {
 void print(string label, const SuperMatrix<3,3>& T, const SuperMatrix<1,3>& W,
                          const SuperMatrix<3,1>& R, const SuperMatrix<1,3>& S, const int n) {
 
-  unique_ptr<complex<double>[]> _Y1(new complex<double>[n*n]);
-  unique_ptr<complex<double>[]> _Y2(new complex<double>[n*n]);
-  unique_ptr<complex<double>[]> _X(new complex<double>[n*n]);
-  unique_ptr<complex<double>[]> _W2(new complex<double>[3*n*n]);
-  SuperMatrix<1,1> X(_X.get(), n, n, n, n);
-  SuperMatrix<3,1> W2(_W2.get(), n, n);
-  SuperMatrix<1,1> Y1(_Y1.get(), n, n);
-  SuperMatrix<1,1> Y2(_Y2.get(), n, n);
+  unique_ptr<complex<double>[]> xY1(new complex<double>[n*n]);
+  unique_ptr<complex<double>[]> xY2(new complex<double>[n*n]);
+  unique_ptr<complex<double>[]> xX(new complex<double>[n*n]);
+  unique_ptr<complex<double>[]> xW2(new complex<double>[3*n*n]);
+  SuperMatrix<1,1> X(xX.get(), n, n, n, n);
+  SuperMatrix<3,1> W2(xW2.get(), n, n);
+  SuperMatrix<1,1> Y1(xY1.get(), n, n);
+  SuperMatrix<1,1> Y2(xY2.get(), n, n);
 
   {
     cout << setprecision(4) << "------ Q0 reconst " << label << endl;
-    contract<false,true> ("N", "C", 1.0, T, W, W2);
-    contract<false,false>("N", "N", 1.0, W, W2, X);
+    contract<_N,_C> (1.0, T, W, W2);
+    contract<_N,_N>(1.0, W, W2, X);
     X.print();
   }
   {
     cout << setprecision(4) << "------ Q1 reconst " << label << endl;
     X.reset();
-    contract<false,false>("N", "N", 1.0, W, R, Y1);
-    contract<false,true >("N", "C", 1.0, W, S, Y2);
+    contract<_N,_N>(1.0, W, R, Y1);
+    contract<_N,_C>(1.0, W, S, Y2);
     Y1.conj();
-    contract<false,true >("N", "C",-1.0, Y1, Y2, X);
+    contract<_N,_C>(-1.0, Y1, Y2, X);
     X.print();
   }
 }
@@ -103,22 +103,22 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
   auto work3_nb  = buf3.get();
   auto work4_nb  = buf4.get();
 
-  unique_ptr<complex<double>[]> _T(new complex<double>[9*nb*nb]);
-  unique_ptr<complex<double>[]> _R(new complex<double>[3*nb*nb]);
-  unique_ptr<complex<double>[]> _S(new complex<double>[3*nb*nb]);
-  unique_ptr<complex<double>[]> _W(new complex<double>[3*nb*n]);
-  unique_ptr<complex<double>[]> _YD(new complex<double>[3*nb*n]);
-  unique_ptr<complex<double>[]> _YE(new complex<double>[3*nb*n]);
-  unique_ptr<complex<double>[]> _ZD(new complex<double>[3*nb*n]);
-  unique_ptr<complex<double>[]> _ZE(new complex<double>[3*nb*n]);
-  SuperMatrix<3,3> T(_T.get(), nb, nb);
-  SuperMatrix<3,1> R(_R.get(), nb, nb);
-  SuperMatrix<1,3> S(_S.get(), nb, nb);
-  SuperMatrix<1,3> W(_W.get(), n, nb, n, 1);
-  SuperMatrix<1,3> YD(_YD.get(), n, nb, n, 1);
-  SuperMatrix<1,3> ZD(_ZD.get(), n, nb, n, 1);
-  SuperMatrix<1,3> YE(_YE.get(), n, nb, n, 1);
-  SuperMatrix<1,3> ZE(_ZE.get(), n, nb, n, 1);
+  unique_ptr<complex<double>[]> xT(new complex<double>[9*nb*nb]);
+  unique_ptr<complex<double>[]> xR(new complex<double>[3*nb*nb]);
+  unique_ptr<complex<double>[]> xS(new complex<double>[3*nb*nb]);
+  unique_ptr<complex<double>[]> xW(new complex<double>[3*nb*n]);
+  unique_ptr<complex<double>[]> xYD(new complex<double>[3*nb*n]);
+  unique_ptr<complex<double>[]> xYE(new complex<double>[3*nb*n]);
+  unique_ptr<complex<double>[]> xZD(new complex<double>[3*nb*n]);
+  unique_ptr<complex<double>[]> xZE(new complex<double>[3*nb*n]);
+  SuperMatrix<3,3> T(xT.get(), nb, nb);
+  SuperMatrix<3,1> R(xR.get(), nb, nb);
+  SuperMatrix<1,3> S(xS.get(), nb, nb);
+  SuperMatrix<1,3> W(xW.get(), n, nb, n, 1);
+  SuperMatrix<1,3> YD(xYD.get(), n, nb, n, 1);
+  SuperMatrix<1,3> ZD(xZD.get(), n, nb, n, 1);
+  SuperMatrix<1,3> YE(xYE.get(), n, nb, n, 1);
+  SuperMatrix<1,3> ZE(xZE.get(), n, nb, n, 1);
 
   for (int k = 0; k != n; ++k) {
     // prepare the k-th column using compact WY-like representation
@@ -128,45 +128,45 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
 
       SuperMatrix<3,1> x(work2_3nb, nb, 1, nb, 1);
       W.cut_row<0>(k, x);
-      contract<false>("N", 1.0, YD, x, d);
-      contract<false>("N", 1.0, YE, x, e);
+      contract<_N>(1.0, YD, x, d);
+      contract<_N>(1.0, YE, x, e);
 
       SuperMatrix<1,1> y(work1_3n, n, 1);
-      contract<false>("N",  1.0, ZE, x, y);
+      contract<_N>(1.0, ZE, x, y);
       d.add_lastcolumn<0>(y);
       y.reset();
-      contract<false>("N", -1.0, ZD, x, y);
+      contract<_N>(-1.0, ZD, x, y);
       e.add_lastcolumn<0>(y);
 
       SuperMatrix<3,1> y1(work1_3n, nb, 1);
-      contract<true> ("C", 1.0, W, d, y1);
+      contract<_C>(1.0, W, d, y1);
       SuperMatrix<3,1> y2(work2_3nb, nb, 1);
-      contract_tr<true>("C", 1.0, T, y1, y2, work4_nb);
-      contract<false>("N", 1.0, W, y2, d);
+      contract_tr<_C>(1.0, T, y1, y2, work4_nb);
+      contract<_N>(1.0, W, y2, d);
       SuperMatrix<1,1> y3(work3_nb, nb, 1);
-      contract_tr<true>("C", 1.0, R, y1, y3, work4_nb);
+      contract_tr<_C>(1.0, R, y1, y3, work4_nb);
       y3.conj();
       y2.reset();
-      contract_tr<true>("C", 1.0, S, y3, y2, work4_nb);
+      contract_tr<_C>(1.0, S, y3, y2, work4_nb);
       SuperMatrix<1,1> y4(work1_3n, n, 1);
-      contract<false>("N", 1.0, W, y2, y4);
+      contract<_N>(1.0, W, y2, y4);
       y4.conj();
 
       SuperMatrix<3,1> y5(work2_3nb, nb, 1);
-      contract<true>("T", 1.0, W, e, y5);
+      contract<_T>(1.0, W, e, y5);
       e.add_lastcolumn<0>(y4);
 
       SuperMatrix<3,1> y5x(work1_3n, y5);
       SuperMatrix<1,1> y6(work3_nb, nb, 1);
-      contract_tr<true>("T", 1.0, R, y5x, y6, work4_nb);
+      contract_tr<_T>(1.0, R, y5x, y6, work4_nb);
       SuperMatrix<3,1> y7(work2_3nb, nb, 1);
-      contract_tr<true>("C", 1.0, S, y6, y7, work4_nb);
-      contract<false>("N", -1.0, W, y7, d);
+      contract_tr<_C>(1.0, S, y6, y7, work4_nb);
+      contract<_N>(-1.0, W, y7, d);
       y7.reset();
-      contract_tr<true>("T", 1.0, T, y5x, y7, work4_nb);
+      contract_tr<_T>(1.0, T, y5x, y7, work4_nb);
       y7.conj();
       SuperMatrix<1,1> y8(work1_3n, n, 1);
-      contract<false>("N", 1.0, W, y7, y8);
+      contract<_N>(1.0, W, y7, y8);
       y8.conj();
       e.add_lastcolumn<0>(y8);
     }
@@ -194,31 +194,31 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
 
         SuperMatrix<1,1> v(work1_3n, n, 1, n, 1);
         v.write_lastcolumn<0>(dnow, len, k+1);
-        contract<true>("C", -tau, W, v, x);
+        contract<_C>(-tau, W, v, x);
 
         SuperMatrix<3,1> v2(work1_3n, nb, 1);
-        contract_tr<false>("N", 1.0, T, x, v2, work4_nb);
+        contract_tr<_N>(1.0, T, x, v2, work4_nb);
         T.append_column<0>(v2);
         T.append_row<0,0>(k, -tau);
 
         SuperMatrix<1,1> v3(work3_nb, nb, 1);
-        contract_tr<false>("N", 1.0, S, x, v3, work4_nb);
+        contract_tr<_N>(1.0, S, x, v3, work4_nb);
         S.append_column<0>(v3);
         W.append_column<0>(dnow, len, k+1);
 
         SuperMatrix<1,1> yx(work1_3n, n, 1);
-        contract<false>("N", 1.0, YD, x, yx);
+        contract<_N>(1.0, YD, x, yx);
         YD.append_column<0>(yx);
         zgemv_("N", n, len, -tau, D0+(k+1)*ld, ld, dnow, 1, 1.0, YD.ptr<0,0>(0,k), 1);
         yx.reset();
-        contract<false>("N", 1.0, YE, x, yx);
+        contract<_N>(1.0, YE, x, yx);
         YE.append_column<0>(yx);
         zgemv_("N", n, len, -tau, D1+(k+1)*ld, ld, dnow, 1, 1.0, YE.ptr<0,0>(0,k), 1);
         yx.reset();
-        contract<false>("N", 1.0, ZD, x, yx);
+        contract<_N>(1.0, ZD, x, yx);
         ZD.append_column<0>(yx);
         yx.reset();
-        contract<false>("N", 1.0, ZE, x, yx);
+        contract<_N>(1.0, ZE, x, yx);
         ZE.append_column<0>(yx);
 
         zaxpy_(len, -conj(tau)*zdotc_(len, dnow, 1, D0+k*ld+k+1, 1), dnow, 1, D0+k*ld+k+1, 1);
@@ -237,7 +237,7 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
       assert(abs(W.data<0,0>(1,0)-1.0)<1.0e-10);
       T.data<0,1>(0,0) = T.data<0,0>(0,0)*cbar;
       T.data<1,1>(0,0) = cbar;
-      W.write_lastcolumn<1>(0,1);
+      W.data<0,1>(1,0) = 1.0;
       R.data<0,0>(0,0) = T.data<0,0>(0,0);
       R.data<1,0>(0,0) = 1.0;
       S.data<0,1>(0,0) = -sbar;
@@ -262,8 +262,8 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
 
       SuperMatrix<1,1> yx(work1_3n,   n, 1);
       SuperMatrix<1,1> zx(work1_3n+n, n, 1);
-      contract<false>("N", 1.0, YD, x, yx);
-      contract<false>("N", 1.0, ZD, x, zx);
+      contract<_N>(1.0, YD, x, yx);
+      contract<_N>(1.0, ZD, x, zx);
       ZD.append_column<1>();
       YD.append_column<1>();
       ZD.add_lastcolumn<1>(zx, cbar);
@@ -276,8 +276,8 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
 
       yx.reset();
       zx.reset();
-      contract<false>("N", 1.0, YE, x, yx);
-      contract<false>("N", 1.0, ZE, x, zx);
+      contract<_N>(1.0, YE, x, yx);
+      contract<_N>(1.0, ZE, x, zx);
       ZE.append_column<1>();
       YE.append_column<1>();
       ZE.add_lastcolumn<1>(zx, cbar);
@@ -289,12 +289,12 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
       ZE.add_lastcolumn<1>(yx, -sbar);
 
       SuperMatrix<3,1> v(work1_3n, nb, 1);
-      contract_tr<false>("N", 1.0, T, x, v, work4_nb);
+      contract_tr<_N>(1.0, T, x, v, work4_nb);
       SuperMatrix<1,1> y(work3_nb, nb, 1);
-      contract_tr<false>("N", 1.0, S, x, y, work4_nb);
+      contract_tr<_N>(1.0, S, x, y, work4_nb);
       y.conj();
       SuperMatrix<3,1> z(work2_3nb, nb, 1);
-      contract_tr<false>("N", sbar, R, y, z, work4_nb);
+      contract_tr<_N>(sbar, R, y, z, work4_nb);
       y.conj();
       T.append_column<1>(z);
       T.add_lastcolumn<1>(v, cbar);
@@ -337,37 +337,37 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
 
         SuperMatrix<1,1> v(work1_3n, n, 1, n, 1);
         v.write_lastcolumn<0>(dnow, len, k+1);
-        contract<true>("C", -ctau, W, v, x);
+        contract<_C>(-ctau, W, v, x);
 
         SuperMatrix<3,1> v2(work1_3n, nb, 1);
-        contract_tr<false>("N", 1.0, T, x, v2, work4_nb);
+        contract_tr<_N>(1.0, T, x, v2, work4_nb);
         T.append_column<2>(v2);
         T.append_row<2,2>(k, -ctau);
 
         SuperMatrix<1,1> v3(work3_nb, nb, 1);
-        contract_tr<false>("N", 1.0, S, x, v3, work4_nb);
+        contract_tr<_N>(1.0, S, x, v3, work4_nb);
         S.append_column<2>(v3);
         W.append_column<2>(dnow, len, k+1);
 
         SuperMatrix<1,1> yx(work1_3n, n, 1);
-        contract<false>("N", 1.0, YD, x, yx);
+        contract<_N>(1.0, YD, x, yx);
         YD.append_column<2>(yx);
         zgemv_("N", n, len, -ctau, D0+(k+1)*ld, ld, dnow, 1, 1.0, YD.ptr<0,2>(0,k), 1);
         yx.reset();
-        contract<false>("N", 1.0, YE, x, yx);
+        contract<_N>(1.0, YE, x, yx);
         YE.append_column<2>(yx);
         zgemv_("N", n, len, -ctau, D1+(k+1)*ld, ld, dnow, 1, 1.0, YE.ptr<0,2>(0,k), 1);
         yx.reset();
-        contract<false>("N", 1.0, ZD, x, yx);
+        contract<_N>(1.0, ZD, x, yx);
         ZD.append_column<2>(yx);
         yx.reset();
-        contract<false>("N", 1.0, ZE, x, yx);
+        contract<_N>(1.0, ZE, x, yx);
         ZE.append_column<2>(yx);
       }
       dnow[0] = alpha2;
     }
   }
-//print("tridiagonalization", T, W, R, S, n);
+  print("tridiagonalization", T, W, R, S, n);
 
   // diagonalize this tri-diagonal matrix (this step is much cheaper than
   // the Householder transformation above).

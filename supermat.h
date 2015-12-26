@@ -41,8 +41,8 @@
 
 namespace {
 void conj_n(std::complex<double>* p, const size_t n) {
-  double* dp = reinterpret_cast<double*>(p) + 1;
-  for (double* i = dp; i <= dp + 2*n-2; i += 2) *i = -*i;
+  for (size_t i = 0; i != n; ++i)
+    p[i] = std::conj(p[i]);
 }
 }
 
@@ -147,12 +147,6 @@ class SuperMatrix {
         std::copy_n(d+ld*nblock, nptr_[nblock]-off, block(nblock, iblock)+(mptr_[iblock]-1)*nmax_+off);
     }
 
-    template<size_t iblock, class = typename std::enable_if<(iblock < MB)>::type>
-    void write_lastcolumn(const int nblock, const int off) {
-      for (int nblock = 0; nblock != NB; ++nblock)
-        *(block(nblock, iblock)+(mptr_[iblock]-1)*nmax_+off) = 1.0;
-    }
-
     template<size_t iblock, class = typename std::enable_if<(iblock < NB)>::type>
     void append_row(std::complex<double>* d, const int ld) {
       assert(nptr_[iblock]+1 <= nmax_);
@@ -206,9 +200,17 @@ class SuperMatrix {
     }
 };
 
+
 namespace {
-template<bool transA, bool transB, size_t N, size_t M, size_t K, size_t L, size_t X, size_t Y>
-void contract(const char* c1, const char* c2, std::complex<double> a, const SuperMatrix<N,M>& A, const SuperMatrix<K,L>& B, SuperMatrix<X,Y>& C) {
+
+enum Trans { _N, _T, _C};
+
+template<Trans TA, Trans TB, size_t N, size_t M, size_t K, size_t L, size_t X, size_t Y>
+void contract(std::complex<double> a, const SuperMatrix<N,M>& A, const SuperMatrix<K,L>& B, SuperMatrix<X,Y>& C) {
+  const constexpr char* c1 = TA == _N ? "N" : (TA == _T ? "T" : "C");
+  const constexpr char* c2 = TB == _N ? "N" : (TB == _T ? "T" : "C");
+  const constexpr bool transA = !(TA == _N);
+  const constexpr bool transB = !(TB == _N);
   const constexpr int loopblock = transA ? N : M;
   static_assert((transA ? M : N) == X, "A dim wrong");
   static_assert((transB ? K : L) == Y, "B dim wrong");
@@ -228,8 +230,10 @@ void contract(const char* c1, const char* c2, std::complex<double> a, const Supe
     }
 }
 
-template<bool transA, size_t N, size_t M, size_t K, size_t L, size_t X, size_t Y>
-void contract(const char* c1, std::complex<double> a, const SuperMatrix<N,M>& A, const SuperMatrix<K,L>& B, SuperMatrix<X,Y>& C) {
+template<Trans TA, size_t N, size_t M, size_t K, size_t L, size_t X, size_t Y>
+void contract(std::complex<double> a, const SuperMatrix<N,M>& A, const SuperMatrix<K,L>& B, SuperMatrix<X,Y>& C) {
+  const constexpr char* c1 = TA == _N ? "N" : (TA == _T ? "T" : "C");
+  const constexpr bool transA = !(TA == _N);
   const constexpr int loopblock = transA ? N : M;
   static_assert((transA ? M : N) == X, "A dim wrong");
   static_assert(L == Y, "B dim wrong");
@@ -248,8 +252,10 @@ void contract(const char* c1, std::complex<double> a, const SuperMatrix<N,M>& A,
     }
 }
 
-template<bool transA, size_t N, size_t M, size_t K, size_t L, size_t X, size_t Y>
-void contract_tr(const char* c1, std::complex<double> a, const SuperMatrix<N,M>& A, const SuperMatrix<K,L>& B, SuperMatrix<X,Y>& C, std::complex<double>* work = nullptr) {
+template<Trans TA, size_t N, size_t M, size_t K, size_t L, size_t X, size_t Y>
+void contract_tr(std::complex<double> a, const SuperMatrix<N,M>& A, const SuperMatrix<K,L>& B, SuperMatrix<X,Y>& C, std::complex<double>* work = nullptr) {
+  const constexpr char* c1 = TA == _N ? "N" : (TA == _T ? "T" : "C");
+  const constexpr bool transA = !(TA == _N);
   const constexpr int loopblock = transA ? N : M;
   static_assert((transA ? M : N) == X, "A dim wrong");
   static_assert(L == Y, "B dim wrong");
