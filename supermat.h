@@ -62,15 +62,17 @@ class SuperMatrix {
     std::array<int, MB> mptr_;
 
   public:
-    SuperMatrix(std::complex<double>* d, const int nm, const int mm, const int nst = 1, const int mst = 1, const bool init = true)
+    SuperMatrix(std::complex<double>* d, const int nm, const int mm, const int nst = 1, const int mst = 1, const bool init = true, const bool last_is_one = false)
         : data_(d), nmax_(nm), mmax_(mm) {
       std::fill(nptr_.begin(), nptr_.end(), nst);
       std::fill(mptr_.begin(), mptr_.end(), mst);
+      if (last_is_one)
+        mptr_[mst-1] = 1;
       if (init)
-        std::fill_n(data_, nmax_*mmax_*NB*MB, 0.0);
+        std::fill_n(data_, (!last_is_one ? nmax_*mmax_*NB*MB : (nmax_*mmax_*NB*(MB-1) + nmax_*NB)), 0.0);
     }
 
-    SuperMatrix(std::complex<double>* d, const int nm, const int mm, const std::array<int, NB> nptr, const std::array<int, NB> mptr)
+    SuperMatrix(std::complex<double>* d, const int nm, const int mm, const std::array<int, NB> nptr, const std::array<int, MB> mptr)
         : data_(d), nmax_(nm), mmax_(mm), nptr_(nptr), mptr_(mptr) {
     }
 
@@ -82,9 +84,28 @@ class SuperMatrix {
             std::copy_n(o.block(n,m)+j*nmax_, nptr_[n], block(n,m)+j*nmax_);
     }
 
-    template<int iblock, class = typename std::enable_if<(iblock < MB)>::type>
-    SuperMatrix<NB,1> slice_column() {
-      return SuperMatrix<NB,1>(block(0,iblock), nmax_, mmax_, nptr_, {{mptr_[iblock]}});
+    template<int iblock, int mb = 1, class = typename std::enable_if<(iblock+mb-1 < MB)>::type>
+    SuperMatrix<NB,mb> slice() {
+      std::array<int, mb> mp;
+      std::copy_n(mptr_.begin()+iblock, mb, mp.begin());
+      return SuperMatrix<NB,mb>(block(0,iblock), nmax_, mmax_, nptr_, mp);
+    }
+
+    template<int nb, class = typename std::enable_if<(nb < NB)>::type>
+    SuperMatrix<nb,MB> trunc() {
+      static_assert(MB == 1, "only defined for MB = 1");
+      std::array<int, nb> np;
+      std::copy_n(nptr_.begin(), nb, np.begin());
+      return SuperMatrix<nb,MB>(block(0,0), nmax_, mmax_, np, mptr_);
+    }
+
+    SuperMatrix<NB,MB> shift(const int n) {
+      std::array<int, NB> np;
+      for (int i = 0; i != NB; ++i) {
+        assert(nptr_[i]-n > 0);
+        np[i] = nptr_[i]-n;
+      }
+      return SuperMatrix<NB,MB>(data_+n, nmax_, mmax_, np, mptr_);
     }
 
     template<size_t I, size_t J, class = typename std::enable_if<(I < NB and J < MB)>::type>
