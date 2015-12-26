@@ -50,7 +50,7 @@ namespace ts {
   // (  U  -V* )
   // (  V   U* )
   //
-  extern void zquatev(const int n2, std::complex<double>* const D, double* const eig);
+  extern void zquatev(const int n2, std::complex<double>* const D, const int nld2, double* const eig);
 }
 
 #endif

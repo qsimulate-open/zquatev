@@ -43,13 +43,15 @@ int main(int argc, char * argv[]) {
 
   const int n = (argc>1) ? atoi(argv[1]) : 200;
   const int n2 = n*2;
+  const int extra = 5;
+  const int nld = (n+extra)*2;
 
   bool printout = (n<=200);
 
   unique_ptr<complex<double>[]> A(new complex<double>[n*n]);
   unique_ptr<complex<double>[]> B(new complex<double>[n*n]);
-  unique_ptr<complex<double>[]> C(new complex<double>[n2*n2]);
-  unique_ptr<complex<double>[]> D(new complex<double>[n2*n2]);
+  unique_ptr<complex<double>[]> C(new complex<double>[nld*n2]);
+  unique_ptr<complex<double>[]> D(new complex<double>[nld*n2]);
 
   // some random matrices A (Hermite) and B (anti-Hermite)
   srand(32);
@@ -66,24 +68,27 @@ int main(int argc, char * argv[]) {
 
   for (int i = 0; i != n; ++i) {
     for (int j = 0; j != n; ++j) {
-      C[j+n2*i] = A[j+n*i];
-      C[n+j+n2*(n+i)] = conj(A[j+n*i]);
-      C[j+n2*(n+i)] = B[j+n*i];
-      C[n+j+n2*(i)] = -conj(B[j+n*i]);
+      C[j+nld*i] = A[j+n*i];
+      C[n+j+nld*(n+i)] = conj(A[j+n*i]);
+      C[j+nld*(n+i)] = B[j+n*i];
+      C[n+j+nld*(i)] = -conj(B[j+n*i]);
     }
   }
-  copy_n(C.get(), n2*n2, D.get());
+  copy_n(C.get(), nld*n2, D.get());
 
   cout << endl;
   cout << " **** using zheev **** " << endl;
   auto time0 = chrono::high_resolution_clock::now();
   {
     unique_ptr<double[]> eig(new double[n2]);
-    const int lwork = 5*n2;
-    unique_ptr<double[]> rwork(new double[lwork]);
-    unique_ptr<complex<double>[]> work(new complex<double>[lwork]);
+    int lwork = -1;
+    unique_ptr<double[]> rwork(new double[3*n-2]);
+    complex<double> lworkopt;
     int info;
-    zheev_("V", "U", &n2, C.get(), &n2, eig.get(), work.get(), &lwork, rwork.get(), &info);
+    zheev_("V", "U", &n2, C.get(), &nld, eig.get(), &lworkopt, &lwork, rwork.get(), &info);
+    lwork = static_cast<int>(lworkopt.real());
+    unique_ptr<complex<double>[]> work(new complex<double>[lwork]);
+    zheev_("V", "U", &n2, C.get(), &nld, eig.get(), work.get(), &lwork, rwork.get(), &info);
     if (info) throw runtime_error("zheev failed");
     if (printout) {
       for (int i = 0; i != n; ++i) {
@@ -102,7 +107,7 @@ int main(int argc, char * argv[]) {
   auto time1 = chrono::high_resolution_clock::now();
   {
     unique_ptr<double[]> eig(new double[n2]);
-    ts::zquatev(n2, D.get(), eig.get());
+    ts::zquatev(n2, D.get(), nld, eig.get());
 
     if (printout) {
       cout << endl;
