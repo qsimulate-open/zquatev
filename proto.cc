@@ -38,35 +38,26 @@ using namespace std;
 namespace ts {
 
 // TODO Debug
-void print(string label, const complex<double>* Q0, const complex<double>* Q1,
-           const SuperMatrix<3,3>& T, const SuperMatrix<1,3>& W,
-           const SuperMatrix<3,1>& R, const SuperMatrix<1,3>& S,
-           SuperMatrix<3,1>& W2, SuperMatrix<1,1>& Y1, SuperMatrix<1,1>& Y2, SuperMatrix<1,1>& X, const int n) {
+void print(string label, const SuperMatrix<3,3>& T, const SuperMatrix<1,3>& W,
+                         const SuperMatrix<3,1>& R, const SuperMatrix<1,3>& S, const int n) {
+
+  unique_ptr<complex<double>[]> _Y1(new complex<double>[n*n]);
+  unique_ptr<complex<double>[]> _Y2(new complex<double>[n*n]);
+  unique_ptr<complex<double>[]> _X(new complex<double>[n*n]);
+  unique_ptr<complex<double>[]> _W2(new complex<double>[3*n*n]);
+  SuperMatrix<1,1> X(_X.get(), n, n, n, n);
+  SuperMatrix<3,1> W2(_W2.get(), n, n);
+  SuperMatrix<1,1> Y1(_Y1.get(), n, n);
+  SuperMatrix<1,1> Y2(_Y2.get(), n, n);
+
   {
-    cout << setprecision(4) << "------ Q0 prelim " << label << endl;
-    for (int i = 0; i != n; ++i) {
-      for (int j = 0; j != n; ++j)
-        cout << Q0[i+j*n] - (i == j ? 1.0 : 0.0);
-      cout << endl;
-    }
     cout << setprecision(4) << "------ Q0 reconst " << label << endl;
-    W2.reset();
-    X.reset();
     contract<false,true> ("N", "C", 1.0, T, W, W2);
     contract<false,false>("N", "N", 1.0, W, W2, X);
     X.print();
   }
-#if 1
   {
-    cout << setprecision(4) << "------ Q1 prelim " << label << endl;
-    for (int i = 0; i != n; ++i) {
-      for (int j = 0; j != n; ++j)
-        cout << Q1[i+j*n];
-      cout << endl;
-    }
     cout << setprecision(4) << "------ Q1 reconst " << label << endl;
-    Y1.reset();
-    Y2.reset();
     X.reset();
     contract<false,false>("N", "N", 1.0, W, R, Y1);
     contract<false,true >("N", "C", 1.0, W, S, Y2);
@@ -74,7 +65,6 @@ void print(string label, const complex<double>* Q0, const complex<double>* Q1,
     contract<false,true >("N", "C",-1.0, Y1, Y2, X);
     X.print();
   }
-#endif
 }
 
 // implementation...
@@ -129,17 +119,7 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
   SuperMatrix<1,3> YE(_YE.get(), n, nb, n, 1);
   SuperMatrix<1,3> ZE(_ZE.get(), n, nb, n, 1);
 
-  // TODO the following matrices are only used for printing so far
-  unique_ptr<complex<double>[]> _Y1(new complex<double>[n*n]);
-  unique_ptr<complex<double>[]> _Y2(new complex<double>[n*n]);
-  unique_ptr<complex<double>[]> _X(new complex<double>[n*n]);
-  unique_ptr<complex<double>[]> _W2(new complex<double>[3*n*n]);
-  SuperMatrix<1,1> X(_X.get(), n, n, n, n);
-  SuperMatrix<3,1> W2(_W2.get(), n, n);
-  SuperMatrix<1,1> Y1(_Y1.get(), n, n);
-  SuperMatrix<1,1> Y2(_Y2.get(), n, n);
-
-  for (int k = 0; k != n-1; ++k) {
+  for (int k = 0; k != n; ++k) {
     // prepare the k-th column using compact WY-like representation
     if (k > 0) {
       SuperMatrix<1,1> d(D0+k*n, n, 1, n, 1, false);
@@ -189,6 +169,7 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
       y8.conj();
       e.add_lastcolumn<0>(y8);
     }
+    if (k == n-1) break;
 
     const int len = n-k-1;
     complex<double> alpha = D1[n*k+k+1];
@@ -385,17 +366,13 @@ void zquatev(const int n2, complex<double>* const D, double* const eig) {
       dnow[0] = alpha2;
     }
   }
-  print("tridiagonalization", Q0, Q1, T, W, R, S, W2, Y1, Y2, X, n);
-assert(false);
+  print("tridiagonalization", T, W, R, S, n);
 
   // diagonalize this tri-diagonal matrix (this step is much cheaper than
   // the Householder transformation above).
   unique_ptr<complex<double>[]> Cmat(new complex<double>[n*n]);
   int info;
-  for (int i = 0; i != n; ++i)
-    for (int j = 0; j <= i; ++j)
-      D0[i-j+j*n] = D0[i+j*n];
-  zhbev_("V", "L", n, 1, D0, n, eig, Cmat.get(), n, work1_3n, reinterpret_cast<double*>(work1_3n+n), info);
+  zhbev_("V", "L", n, 1, D0, n+1, eig, Cmat.get(), n, work1_3n, reinterpret_cast<double*>(work1_3n+n), info);
   if (info) throw runtime_error("zhbev failed in quaternion diagonalization");
 
   // form the coefficient matrix in D
