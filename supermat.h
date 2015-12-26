@@ -252,6 +252,34 @@ void contract(std::complex<double> a, const SuperMatrix<N,M>& A, const SuperMatr
     }
 }
 
+
+template<Trans TA, size_t K, size_t L, size_t X, size_t Y>
+void contractW(std::complex<double> a, const SuperMatrix<1,3>& A /* = W*/, const SuperMatrix<K,L>& B, SuperMatrix<X,Y>& C) {
+  const constexpr char* c1 = TA == _N ? "N" : (TA == _T ? "T" : "C");
+  const constexpr bool transA = !(TA == _N);
+  const constexpr int loopblock = transA ? 1 : 3;
+  static_assert((transA ? 3 : 1) == X, "A dim wrong");
+  static_assert(L == Y, "B dim wrong");
+  static_assert((transA ? 1 : 3) == K, "AB dim wrong");
+  assert(B.mmax() == 1 && C.mmax() == 1);
+  auto ptr = A.block(0,2); // this block is a unit matrix
+  for (int y = 0; y != Y; ++y)
+    for (int x = 0; x != X; ++x) {
+      for (int l = 0; l != loopblock; ++l) {
+        assert((transA ? A.nptr(l) : A.mptr(l)) == B.nptr(l));
+        auto cptr = transA ? A.block(l, x) : A.block(x, l);
+        if (ptr != cptr)
+          zgemv_(c1, A.nptr(transA ? l : x) , A.mptr(transA ? x : l), a, cptr, A.nmax(), B.block(l,y), 1, 1.0, C.block(x,y), 1);
+        else
+          zaxpy_(std::min(A.nptr(transA ? l : x) , A.mptr(transA ? x : l)), a, B.block(l,y), 1, C.block(x,y), 1);
+      }
+      C.nptr(x) = (transA ? A.mptr(x) : A.nptr(x));
+      C.mptr(y) = B.mptr(y);
+      assert(C.nptr(x) <= C.nmax());
+      assert(C.mptr(y) <= C.mmax());
+    }
+}
+
 template<Trans TA, size_t N, size_t M, size_t K, size_t L, size_t X, size_t Y>
 void contract_tr(std::complex<double> a, const SuperMatrix<N,M>& A, const SuperMatrix<K,L>& B, SuperMatrix<X,Y>& C, std::complex<double>* work = nullptr) {
 #if 1

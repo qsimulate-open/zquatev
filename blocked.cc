@@ -93,7 +93,7 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
   // will be updated
   const int nb = n;
 
-  unique_ptr<complex<double>[]> buf(new complex<double>[n*3]);
+  unique_ptr<complex<double>[]> buf(new complex<double>[max(n-1,nb)*3]);
   unique_ptr<complex<double>[]> buf2(new complex<double>[nb*3]);
   unique_ptr<complex<double>[]> buf3(new complex<double>[nb]);
   unique_ptr<complex<double>[]> buf4(new complex<double>[nb]);
@@ -139,21 +139,21 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
       e.add_lastcolumn<0>(y);
 
       SuperMatrix<3,1> y1(work1_3n, nb, 1);
-      contract<_C>(1.0, W, d, y1);
+      contractW<_C>(1.0, W, d, y1);
       SuperMatrix<3,1> y2(work2_3nb, nb, 1);
       contract_tr<_C>(1.0, T, y1, y2, work4_nb);
-      contract<_N>(1.0, W, y2, d);
+      contractW<_N>(1.0, W, y2, d);
       SuperMatrix<1,1> y3(work3_nb, nb, 1);
       contract_tr<_C>(1.0, R, y1, y3, work4_nb);
       y3.conj();
       y2.reset();
       contract_tr<_C>(1.0, S, y3, y2, work4_nb);
       SuperMatrix<1,1> y4(work1_3n, n-1, 1);
-      contract<_N>(1.0, W, y2, y4);
+      contractW<_N>(1.0, W, y2, y4);
       y4.conj();
 
       SuperMatrix<3,1> y5(work2_3nb, nb, 1);
-      contract<_T>(1.0, W, e, y5);
+      contractW<_T>(1.0, W, e, y5);
       e.add_lastcolumn<0>(y4);
 
       SuperMatrix<3,1> y5x(work1_3n, y5);
@@ -161,12 +161,12 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
       contract_tr<_T>(1.0, R, y5x, y6, work4_nb);
       SuperMatrix<3,1> y7(work2_3nb, nb, 1);
       contract_tr<_C>(1.0, S, y6, y7, work4_nb);
-      contract<_N>(-1.0, W, y7, d);
+      contractW<_N>(-1.0, W, y7, d);
       y7.reset();
       contract_tr<_T>(1.0, T, y5x, y7, work4_nb);
       y7.conj();
       SuperMatrix<1,1> y8(work1_3n, n-1, 1);
-      contract<_N>(1.0, W, y7, y8);
+      contractW<_N>(1.0, W, y7, y8);
       y8.conj();
       e.add_lastcolumn<0>(y8);
     }
@@ -195,7 +195,7 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
 
         SuperMatrix<1,1> v(work1_3n, n-1, 1, n-1, 1);
         v.write_lastcolumn<0>(dnow, len, k);
-        contract<_C>(-tau, W, v, x);
+        contractW<_C>(-tau, W, v, x);
 
         SuperMatrix<3,1> v2(work1_3n, nb, 1);
         contract_tr<_N>(1.0, T, x, v2, work4_nb);
@@ -338,7 +338,7 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
 
         SuperMatrix<1,1> v(work1_3n, n-1, 1, n-1, 1);
         v.write_lastcolumn<0>(dnow, len, k);
-        contract<_C>(-ctau, W, v, x);
+        contractW<_C>(-ctau, W, v, x);
 
         SuperMatrix<3,1> v2(work1_3n, nb, 1);
         contract_tr<_N>(1.0, T, x, v2, work4_nb);
