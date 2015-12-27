@@ -44,13 +44,6 @@
 namespace ts {
 namespace impl {
 
-namespace {
-void conj_n(std::complex<double>* p, const size_t n) {
-  for (size_t i = 0; i != n; ++i)
-    p[i] = std::conj(p[i]);
-}
-}
-
 template <size_t NB, size_t MB>
 class SuperMatrix {
   protected:

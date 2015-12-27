@@ -65,6 +65,13 @@ namespace ts {
 
     extern void transpose     (const int, const int, const std::complex<double>*, const int, std::complex<double>*, const int);
     extern void transpose_conj(const int, const int, const std::complex<double>*, const int, std::complex<double>*, const int);
+
+    namespace {
+      void conj_n(std::complex<double>* p, const size_t n) {
+        for (size_t i = 0; i != n; ++i)
+          p[i] = std::conj(p[i]);
+      }
+    }
   }
 }
 

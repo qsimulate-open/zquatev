@@ -71,8 +71,6 @@ int zquatev(const int n2, complex<double>* const D, const int ld2, double* const
     else
       unblocked_update(n-p, D0+p*ld+p, D1+p*ld+p, Q0+p*ld, Q1+p*ld, ld, n, tmp_mem.get());
 
-//assert(false);
-
   // diagonalize this tri-diagonal matrix (this step is much cheaper than
   // the Householder transformation above).
   auto work1 = tmp_mem.get();

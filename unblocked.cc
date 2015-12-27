@@ -87,17 +87,13 @@ void unblocked_update(const int n, complex<double>* const D0, complex<double>* c
 
     zrot_(len+1, D0+k+1+k*ld, ld, D1+k+1+k*ld, ld, c, s);
 
-    for (int i = 0; i != len+1; ++i)
-      D1[(k+1)*ld+k+i] = -conj(D1[(k+1)*ld+k+i]);
-    zrot_(len+1, D0+(k+1)*ld+k, 1, D1+(k+1)*ld+k, 1, c, conj(s));
-    for (int i = 0; i != len+1; ++i)
-      D1[(k+1)*ld+k+i] = -conj(D1[(k+1)*ld+k+i]);
+    conj_n(D1+(k+1)*ld+k, len+1);
+    zrot_(len+1, D1+(k+1)*ld+k, 1, D0+(k+1)*ld+k, 1, c, s);
+    conj_n(D1+(k+1)*ld+k, len+1);
 
-    for (int i = 0; i != norig; ++i)
-      Q1[(k+1)*ld+i] = -conj(Q1[(k+1)*ld+i]);
-    zrot_(norig, Q0+(k+1)*ld, 1, Q1+(k+1)*ld, 1, c, conj(s));
-    for (int i = 0; i != norig; ++i)
-      Q1[(k+1)*ld+i] = -conj(Q1[(k+1)*ld+i]);
+    conj_n(Q1+(k+1)*ld, norig);
+    zrot_(norig, Q1+(k+1)*ld, 1, Q0+(k+1)*ld, 1, c, s);
+    conj_n(Q1+(k+1)*ld, norig);
 
     // Householder to fix top half in column k
     if (len > 1) {
