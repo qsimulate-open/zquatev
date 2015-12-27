@@ -29,11 +29,10 @@
 // either expressed or implied, of the FreeBSD Project.
 //
 
-#ifndef __SRC_UTIL_F77_H
-#define __SRC_UTIL_F77_H
+#ifndef __TS_ZQUATEV_F77_H
+#define __TS_ZQUATEV_F77_H
 
 #include <complex>
-#include <memory>
 
 // blas
 extern "C" {
