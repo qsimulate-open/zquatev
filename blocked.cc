@@ -106,15 +106,15 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
   unique_ptr<complex<double>[]> xT(new complex<double>[9*nb*nb]);
   unique_ptr<complex<double>[]> xR(new complex<double>[3*nb*nb]);
   unique_ptr<complex<double>[]> xS(new complex<double>[3*nb*nb]);
-  unique_ptr<complex<double>[]> xW(new complex<double>[3*nb*n]);
-  unique_ptr<complex<double>[]> xYD(new complex<double>[3*nb*n]);
-  unique_ptr<complex<double>[]> xYE(new complex<double>[3*nb*n]);
-  unique_ptr<complex<double>[]> xZD(new complex<double>[3*nb*n]);
-  unique_ptr<complex<double>[]> xZE(new complex<double>[3*nb*n]);
+  unique_ptr<complex<double>[]> xW(new complex<double>[2*nb*n]);
+  unique_ptr<complex<double>[]> xYD(new complex<double>[(1+2*nb)*n]);
+  unique_ptr<complex<double>[]> xYE(new complex<double>[(1+2*nb)*n]);
+  unique_ptr<complex<double>[]> xZD(new complex<double>[(1+2*nb)*n]);
+  unique_ptr<complex<double>[]> xZE(new complex<double>[(1+2*nb)*n]);
   SuperMatrix<3,3> T(xT.get(), nb, nb);
   SuperMatrix<3,1> R(xR.get(), nb, nb);
   SuperMatrix<1,3> S(xS.get(), nb, nb);
-  SuperMatrix<1,3> W(xW.get(), n-1, nb, n-1, 1);
+  SuperMatrix<1,2> W(xW.get(), n-1, nb, n-1, 1);
   SuperMatrix<1,3> YD(xYD.get(), n-1, nb, n-1, 1, true, true);
   SuperMatrix<1,3> ZD(xZD.get(), n-1, nb, n-1, 1, true, true);
   SuperMatrix<1,3> YE(xYE.get(), n-1, nb, n-1, 1, true, true);
@@ -130,7 +130,7 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
       SuperMatrix<3,1> x(work2_3nb, W.mptr(0), 1, W.mptr(0), 1);
       x.nptr(2) = 1;
       SuperMatrix<2,1> x2 = x.trunc<2>();
-      W.slice<0,2>().cut_row<0>(k-1, x2);
+      W.cut_row<0>(k-1, x2);
       x.data<2,0>(0,0) = 1.0;
       contract<_N>(1.0, YD, x, d);
       contract<_N>(1.0, YE, x, e);
@@ -146,22 +146,28 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
       auto ds = d.shift(sf);
       auto es = e.shift(sf);
       auto Ws = W.shift(sf);
-      SuperMatrix<3,1> y1(work1_3n, k, 1);
-      contractW<_C>(1.0, W, d, y1);
+      SuperMatrix<3,1> y1(work1_3n, k, 1, k, 1);
+      auto y1s = y1.trunc<2>();
+      contract<_C>(1.0, W, d, y1s);
+      zaxpy_(k, 1.0, d.block(0,0), 1, y1.ptr<2,0>(0,0), 1);
       SuperMatrix<3,1> y2(work2_3nb, k, 1);
       contract_tr<_C>(1.0, T, y1, y2, work4_nb);
-      contract<_N>(1.0, Ws, y2, ds);
+      contract<_N>(1.0, Ws, y2.trunc<2>(), ds);
+      ds.data<0,0>(0,0) += y2.data<2,0>(k-1,0);
       SuperMatrix<1,1> y3(work3_nb, k, 1);
       contract_tr<_C>(1.0, R, y1, y3, work4_nb);
       y3.conj();
       y2.reset();
       contract_tr<_C>(1.0, S, y3, y2, work4_nb);
       SuperMatrix<1,1> y4(work1_3n, n-sf, 1);
-      contract<_N>(1.0, Ws, y2, y4);
+      contract<_N>(1.0, Ws, y2.trunc<2>(), y4);
+      y4.data<0,0>(0,0) += y2.data<2,0>(k-1,0);
       y4.conj();
 
-      SuperMatrix<3,1> y5(work2_3nb, k, 1);
-      contractW<_T>(1.0, W, e, y5);
+      SuperMatrix<3,1> y5(work2_3nb, k, 1, k, 1);
+      auto y5s = y5.trunc<2>();
+      contract<_T>(1.0, W, e, y5s);
+      zaxpy_(k, 1.0, e.block(0,0), 1, y5.ptr<2,0>(0,0), 1);
       es.add_lastcolumn<0>(y4);
 
       SuperMatrix<3,1> y5x(work1_3n, y5);
@@ -169,12 +175,14 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
       contract_tr<_T>(1.0, R, y5x, y6, work4_nb);
       SuperMatrix<3,1> y7(work2_3nb, k, 1);
       contract_tr<_C>(1.0, S, y6, y7, work4_nb);
-      contract<_N>(-1.0, Ws, y7, ds);
+      contract<_N>(-1.0, Ws, y7.trunc<2>(), ds);
+      ds.data<0,0>(0,0) -= y7.data<2,0>(k-1,0);
       y7.reset();
       contract_tr<_T>(1.0, T, y5x, y7, work4_nb);
       y7.conj();
       SuperMatrix<1,1> y8(work1_3n, n-sf, 1);
-      contract<_N>(1.0, Ws, y7, y8);
+      contract<_N>(1.0, Ws, y7.trunc<2>(), y8);
+      y8.data<0,0>(0,0) += y7.data<2,0>(k-1,0);
       y8.conj();
       es.add_lastcolumn<0>(y8);
     }
@@ -203,7 +211,7 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
 
         SuperMatrix<1,1> v(work1_3n, n-k-1, 1, n-k-1, 1);
         v.write_lastcolumn<0>(dnow, len);
-        contract<_C>(-tau, W.slice<0,2>().shift(k), v, x);
+        contract<_C>(-tau, W.shift(k), v, x);
 
         SuperMatrix<3,1> v2(work1_3n, k, 1);
         contract_tr<_N>(1.0, T.slice<0,2>(), x, v2, work4_nb);
@@ -246,7 +254,6 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
       assert(abs(W.data<0,0>(0,0)-1.0)<1.0e-10);
       T.data<0,2>(0,0) = T.data<0,0>(0,0)*cbar;
       T.data<2,2>(0,0) = cbar;
-      W.data<0,2>(0,0) = 1.0;
       R.data<0,0>(0,0) = T.data<0,0>(0,0);
       R.data<2,0>(0,0) = 1.0;
       S.data<0,2>(0,0) = -sbar;
@@ -267,7 +274,7 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
       ZE.add_lastcolumn<2>(ye0b, -sbar);
     } else {
       SuperMatrix<2,1> x(work2_3nb, k+1, 1);
-      W.slice<0,2>().cut_row<0>(k, x);
+      W.cut_row<0>(k, x);
 
       SuperMatrix<1,1> yx(work1_3n,     n-1, 1);
       SuperMatrix<1,1> zx(work1_3n+n-1, n-1, 1);
@@ -314,7 +321,6 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
       y.scale(cbar);
       S.append_column<2>(y);
       S.append_row<0,2>(k, -sbar);
-      W.append_column<2>(k, 1.0);
     }
 
     if (len > 1) {
@@ -348,7 +354,7 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
         SuperMatrix<1,1> v(work1_3n, n-k-1, 1, n-k-1, 1);
         v.write_lastcolumn<0>(dnow, len);
         SuperMatrix<2,1> x2 = x.trunc<2>();
-        contract<_C>(-ctau, W.slice<0,2>().shift(k), v, x2);
+        contract<_C>(-ctau, W.shift(k), v, x2);
         x.data<2,0>(k,0) = -ctau;
 
         SuperMatrix<3,1> v2(work1_3n, k+1, 1);
