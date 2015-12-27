@@ -62,7 +62,7 @@ int zquatev(const int n2, complex<double>* const D, const int ld2, double* const
 
   // TODO allocation will move out
   const int nb = 20;
-  const size_t alloc_size = nb*5 + nb*nb*15 + (max(4,nb)+10*nb+3)*(n-1);
+  const size_t alloc_size = nb*5 + nb*nb*15 + (max(4,nb)+11*nb+3)*(n-1);
   unique_ptr<complex<double>[]> tmp_mem(new complex<double>[alloc_size]);
 
   for (int p = 0; p < n; p += nb)
