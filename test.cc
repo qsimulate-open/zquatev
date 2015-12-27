@@ -96,27 +96,24 @@ int main(int argc, char * argv[]) {
 
   cout << " **** using zquartev **** " << endl;
   auto time1 = chrono::high_resolution_clock::now();
-  {
-    int info = ts::zquatev(n2, D.get(), nld, eig2.get());
-    if (info) throw runtime_error("zquatev failed");
-#if 0
-    zgemm3m_("N", "N", n2, n2, n2, 1.0, E.get(), n2, D.get(), n2, 0.0, C.get(), n2);
-    zgemm3m_("C", "N", n2, n2, n2, 1.0, D.get(), n2, C.get(), n2, 0.0, E.get(), n2);
-    cout << "eigen vectors" << fixed << endl;
-    for (int i = 0; i != n2; ++i) {
-      for (int j = 0; j != n2; ++j)
-        cout << setw(10) << setprecision(3) << E[i+j*n2];
-      cout << endl;
-    }
-#endif
-  }
+
+  const int info2 = ts::zquatev(n2, D.get(), nld, eig2.get());
+  if (info2) throw runtime_error("zquatev failed");
   auto time2 = chrono::high_resolution_clock::now();
+
+  zgemm3m_("N", "N", n2, n2, n2, 1.0, E.get(), n2, D.get(), n2, 0.0, C.get(), n2);
+  zgemm3m_("C", "N", n2, n2, n2, 1.0, D.get(), n2, C.get(), n2, 0.0, E.get(), n2);
+  cout << "eigen vectors" << fixed << endl;
+  for (int i = 0; i != n2; ++i)
+    E[i+i*n2] -= eig2[i%n];
+  const double error = real(zdotc_(n2*n2, E.get(), 1, E.get(), 1));
 
   double maxdev = 0.0;
   for (int i = 0; i != n; ++i)
     maxdev = max(maxdev, abs(eig[2*i]-eig2[i]));
-  cout << endl;
+  cout << setprecision(5) << scientific << endl;
   cout << " * Max deviation of the eigenvalues: " << maxdev << endl;
+  cout << " * Errors in the eigenvectors      : " << error << endl;
   cout << endl;
   cout << " zheev   : " << setw(10) << fixed << setprecision(2) << chrono::duration_cast<chrono::milliseconds>(time1-time0).count()*0.001 << endl;
   cout << " zquartev: " << setw(10) << fixed << setprecision(2) << chrono::duration_cast<chrono::milliseconds>(time2-time1).count()*0.001 << endl;

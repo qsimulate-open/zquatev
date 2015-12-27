@@ -45,8 +45,8 @@ void unblocked_update(const int n, complex<double>* const D0, complex<double>* c
                       const int norig, complex<double>* const work) {
 
   complex<double>* tmp =  work;
-  complex<double>* vec =  work + n;
-  complex<double>* cvec = work + n*2;
+  complex<double>* vec =  work + norig;
+  complex<double>* cvec = work + norig+n;
 
   for (int k = 0; k != n-1; ++k) {
     const int len = n-k-1;
@@ -72,12 +72,12 @@ void unblocked_update(const int n, complex<double>* const D0, complex<double>* c
       zgeru_(len+1, len, -tau, tmp, 1, vec, 1, D1+(k+1)*ld+(k), ld);
 
       // 00-2
-      zgemv_("N", n, len, 1.0, Q0+(k+1)*n, n, cvec, 1, 0.0, tmp, 1);
-      zgeru_(n, len, -tau, tmp, 1, vec, 1, Q0+(k+1)*n, n);
+      zgemv_("N", norig, len, 1.0, Q0+(k+1)*ld, ld, cvec, 1, 0.0, tmp, 1);
+      zgeru_(norig, len, -tau, tmp, 1, vec, 1, Q0+(k+1)*ld, ld);
 
       // 10-2
-      zgemv_("N", n, len, 1.0, Q1+(k+1)*n, n, cvec, 1, 0.0, tmp, 1);
-      zgeru_(n, len, -tau, tmp, 1, vec, 1, Q1+(k+1)*n, n);
+      zgemv_("N", norig, len, 1.0, Q1+(k+1)*ld, ld, cvec, 1, 0.0, tmp, 1);
+      zgeru_(norig, len, -tau, tmp, 1, vec, 1, Q1+(k+1)*ld, ld);
     }
 
     // symplectic Givens rotation to clear out D(k+n, k)
@@ -93,11 +93,11 @@ void unblocked_update(const int n, complex<double>* const D0, complex<double>* c
     for (int i = 0; i != len+1; ++i)
       D1[(k+1)*ld+k+i] = -conj(D1[(k+1)*ld+k+i]);
 
-    for (int i = 0; i != n; ++i)
-      Q1[(k+1)*n+i] = -conj(Q1[(k+1)*n+i]);
-    zrot_(n, Q0+(k+1)*n, 1, Q1+(k+1)*n, 1, c, conj(s));
-    for (int i = 0; i != n; ++i)
-      Q1[(k+1)*n+i] = -conj(Q1[(k+1)*n+i]);
+    for (int i = 0; i != norig; ++i)
+      Q1[(k+1)*ld+i] = -conj(Q1[(k+1)*ld+i]);
+    zrot_(norig, Q0+(k+1)*ld, 1, Q1+(k+1)*ld, 1, c, conj(s));
+    for (int i = 0; i != norig; ++i)
+      Q1[(k+1)*ld+i] = -conj(Q1[(k+1)*ld+i]);
 
     // Householder to fix top half in column k
     if (len > 1) {
@@ -122,12 +122,12 @@ void unblocked_update(const int n, complex<double>* const D0, complex<double>* c
       zgerc_(len+1, len, conj(tau), tmp, 1, vec, 1, D1+(k+1)*ld+(k), ld);
 
       // 00-2
-      zgemv_("N", n, len, 1.0, Q0+(k+1)*n, n, vec, 1, 0.0, tmp, 1);
-      zgerc_(n, len, -conj(tau), tmp, 1, vec, 1, Q0+(k+1)*n, n);
+      zgemv_("N", norig, len, 1.0, Q0+(k+1)*ld, ld, vec, 1, 0.0, tmp, 1);
+      zgerc_(norig, len, -conj(tau), tmp, 1, vec, 1, Q0+(k+1)*ld, ld);
 
       // 01-2
-      zgemv_("N", n, len, -1.0, Q1+(k+1)*n, n, vec, 1, 0.0, tmp, 1);
-      zgerc_(n, len, conj(tau), tmp, 1, vec, 1, Q1+(k+1)*n, n);
+      zgemv_("N", norig, len, -1.0, Q1+(k+1)*ld, ld, vec, 1, 0.0, tmp, 1);
+      zgerc_(norig, len, conj(tau), tmp, 1, vec, 1, Q1+(k+1)*ld, ld);
 
     }
 

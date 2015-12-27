@@ -66,7 +66,7 @@ int zquatev(const int n2, complex<double>* const D, const int ld2, double* const
   unique_ptr<complex<double>[]> tmp_mem(new complex<double>[alloc_size]);
 
   for (int p = 0; p < n; p += nb)
-    if (n-p > nb)
+    if (n-p > nb+1)
       panel_update(n-p, nb, D0+p*ld+p, D1+p*ld+p, Q0+p*ld, Q1+p*ld, ld, n, tmp_mem.get());
     else
       unblocked_update(n-p, D0+p*ld+p, D1+p*ld+p, Q0+p*ld, Q1+p*ld, ld, n, tmp_mem.get());
