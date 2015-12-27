@@ -62,7 +62,7 @@ int zquatev(const int n2, complex<double>* const D, const int ld2, double* const
 
   // TODO allocation will move out
   const int nb = 20;
-  const size_t alloc_size = max(n-1,nb)*3 + nb*5 + 15*nb*nb + (max(4,nb)+10*nb)*(n-1);
+  const size_t alloc_size = nb*5 + nb*nb*15 + (max(4,nb)+10*nb+3)*(n-1);
   unique_ptr<complex<double>[]> tmp_mem(new complex<double>[alloc_size]);
 
   for (int p = 0; p < n; p += nb)
@@ -86,7 +86,7 @@ int zquatev(const int n2, complex<double>* const D, const int ld2, double* const
   zhbev_("V", "L", n, 1, work3, 2, eig, D0+ld, ld2, work1, reinterpret_cast<double*>(work2), info);
 
   // form the coefficient matrix in D
-  zgemm3m_("N", "N", n, n, n, 1.0, Q0, ld, D+ld, n, 0.0, D, ld2);
+  zgemm3m_("N", "N", n, n, n, 1.0, Q0, ld, D+ld, ld2, 0.0, D, ld2);
   for (int i = 0; i != n; ++i)
     copy_n(D+ld+i*ld2, n, Q0+i*ld);
   zgemm3m_("N", "N", n, n, n, 1.0, Q1, ld, Q0, n, 0.0, D+ld, ld2);

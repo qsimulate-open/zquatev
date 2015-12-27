@@ -47,7 +47,7 @@ void panel_update(const int n, const int nb,
   assert(n > nb);
 
   complex<double>* ptr = work_ptr;
-  auto work1_3n  = ptr; ptr += max(n-1,nb)*3;
+  auto work1_3n  = ptr; ptr += (n-1)*3;
   auto work2_3nb = ptr; ptr += nb*3;
   auto work3_nb  = ptr; ptr += nb;
   auto work4_nb  = ptr; ptr += nb;

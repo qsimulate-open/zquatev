@@ -102,7 +102,7 @@ int main(int argc, char * argv[]) {
 #if 0
     zgemm3m_("N", "N", n2, n2, n2, 1.0, E.get(), n2, D.get(), n2, 0.0, C.get(), n2);
     zgemm3m_("C", "N", n2, n2, n2, 1.0, D.get(), n2, C.get(), n2, 0.0, E.get(), n2);
-    cout << "eigen vectors" << endl;
+    cout << "eigen vectors" << fixed << endl;
     for (int i = 0; i != n2; ++i) {
       for (int j = 0; j != n2; ++j)
         cout << setw(10) << setprecision(3) << E[i+j*n2];
