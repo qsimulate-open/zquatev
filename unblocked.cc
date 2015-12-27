@@ -1,5 +1,6 @@
 //
 // ZQUATEV: Diagonalization of quaternionic matrices
+// File   : unblocked.cc
 // Copyright (c) 2013, Toru Shiozaki (shiozaki@northwestern.edu)
 // All rights reserved.
 //
@@ -36,6 +37,7 @@
 using namespace std;
 
 namespace ts {
+namespace impl {
 
 // implementation...
 
@@ -132,4 +134,4 @@ void unblocked_update(const int n, complex<double>* const D0, complex<double>* c
   }
 }
 
-}
+}}

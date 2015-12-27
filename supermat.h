@@ -1,4 +1,6 @@
 //
+// ZQUATEV: Diagonalization of quaternionic matrices
+// File   : supermat.h
 // Copyright (c) 2016, Toru Shiozaki (shiozaki@northwestern.edu)
 // All rights reserved.
 //
@@ -38,6 +40,9 @@
 #include <iomanip>
 #include <array>
 #include <algorithm>
+
+namespace ts {
+namespace impl {
 
 namespace {
 void conj_n(std::complex<double>* p, const size_t n) {
@@ -308,5 +313,6 @@ void contract_tr(std::complex<double> a, const SuperMatrix<N,M>& A, const SuperM
 }
 
 }
+}}
 
 #endif

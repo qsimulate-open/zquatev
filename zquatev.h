@@ -51,6 +51,21 @@ namespace ts {
   // (  V   U* )
   //
   extern int zquatev(const int n2, std::complex<double>* const D, const int nld2, double* const eig);
+
+  // internal functions
+  namespace impl {
+    extern void panel_update(const int current_size, const int block_size,
+                             std::complex<double>* const D0, std::complex<double>* const D1,
+                             std::complex<double>* const Q0, std::complex<double>* const Q1,
+                             const int ld, const int original_size, std::complex<double>* const work);
+    extern void unblocked_update(const int current_size,
+                                 std::complex<double>* const D0, std::complex<double>* const D1,
+                                 std::complex<double>* const Q0, std::complex<double>* const Q1,
+                                 const int ld, const int original_size, std::complex<double>* const work);
+
+    extern void transpose     (const int, const int, const std::complex<double>*, const int, std::complex<double>*, const int);
+    extern void transpose_conj(const int, const int, const std::complex<double>*, const int, std::complex<double>*, const int);
+  }
 }
 
 #endif

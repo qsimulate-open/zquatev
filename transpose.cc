@@ -1,7 +1,7 @@
 //
 // ZQUATEV: Diagonalization of quaternionic matrices
 // File:    transpose.cc
-// Copyright (c) 2018, Toru Shiozaki (shiozaki@northwestern.edu)
+// Copyright (c) 2013, Toru Shiozaki (shiozaki@northwestern.edu)
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -40,6 +40,7 @@ extern "C" {
 #endif
 
 namespace ts {
+namespace impl {
 
 void transpose(const int m, const int n, const complex<double>* h, const int ld, complex<double>* vec, const int ldt) {
 #ifdef MKL
@@ -332,4 +333,4 @@ void transpose_conj(const int m, const int n, const complex<double>* h, const in
 #endif
 }
 
-}
+}}
