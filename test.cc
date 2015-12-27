@@ -1,5 +1,6 @@
 //
 // ZQUATEV: Diagonalization of quaternionic matrices
+// File   : test.cc
 // Copyright (c) 2013, Toru Shiozaki (shiozaki@northwestern.edu)
 // All rights reserved.
 //
@@ -43,8 +44,7 @@ int main(int argc, char * argv[]) {
 
   const int n = (argc>1) ? atoi(argv[1]) : 200;
   const int n2 = n*2;
-  const int extra = 5;
-  const int nld = (n+extra)*2;
+  const int nld = n*2;
 
 //bool printout = (n<=200);
   bool printout = false;
@@ -53,6 +53,10 @@ int main(int argc, char * argv[]) {
   unique_ptr<complex<double>[]> B(new complex<double>[n*n]);
   unique_ptr<complex<double>[]> C(new complex<double>[nld*n2]);
   unique_ptr<complex<double>[]> D(new complex<double>[nld*n2]);
+  unique_ptr<complex<double>[]> E(new complex<double>[nld*n2]);
+
+  unique_ptr<double[]> eig(new double[n2]);
+  unique_ptr<double[]> eig2(new double[n2]);
 
   // some random matrices A (Hermite) and B (anti-Hermite)
   srand(32);
@@ -76,12 +80,12 @@ int main(int argc, char * argv[]) {
     }
   }
   copy_n(C.get(), nld*n2, D.get());
+  copy_n(C.get(), nld*n2, E.get());
 
   cout << endl;
   cout << " **** using zheev **** " << endl;
   auto time0 = chrono::high_resolution_clock::now();
   {
-    unique_ptr<double[]> eig(new double[n2]);
     int lwork = -1;
     unique_ptr<double[]> rwork(new double[6*n-2]);
     complex<double> lworkopt;
@@ -107,19 +111,33 @@ int main(int argc, char * argv[]) {
   cout << " **** using zquartev **** " << endl;
   auto time1 = chrono::high_resolution_clock::now();
   {
-    unique_ptr<double[]> eig(new double[n2]);
-    ts::zquatev(n2, D.get(), nld, eig.get());
+    ts::zquatev(n2, D.get(), nld, eig2.get());
 
     if (printout) {
       cout << endl;
       for (int i = 0; i != n; ++i) {
-        cout << fixed << setw(30) << setprecision(15) << eig[i];
+        cout << fixed << setw(30) << setprecision(15) << eig2[i];
         if (i % 5 == 4) cout << endl;
       }
     }
+#if 0
+    zgemm3m_("N", "N", n2, n2, n2, 1.0, E.get(), n2, D.get(), n2, 0.0, C.get(), n2);
+    zgemm3m_("C", "N", n2, n2, n2, 1.0, D.get(), n2, C.get(), n2, 0.0, E.get(), n2);
+    cout << "eigen vectors" << endl;
+    for (int i = 0; i != n2; ++i) {
+      for (int j = 0; j != n2; ++j)
+        cout << setw(10) << setprecision(3) << E[i+j*n2];
+      cout << endl;
+    }
+#endif
   }
   auto time2 = chrono::high_resolution_clock::now();
 
+  double maxdev = 0.0;
+  for (int i = 0; i != n; ++i)
+    maxdev = max(maxdev, abs(eig[2*i]-eig2[i]));
+  cout << endl;
+  cout << " * Max deviation of the eigenvalues: " << maxdev << endl;
   cout << endl;
   cout << " zheev   : " << setw(10) << fixed << setprecision(2) << chrono::duration_cast<chrono::milliseconds>(time1-time0).count()*0.001 << endl;
   cout << " zquartev: " << setw(10) << fixed << setprecision(2) << chrono::duration_cast<chrono::milliseconds>(time2-time1).count()*0.001 << endl;

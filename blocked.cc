@@ -1,5 +1,6 @@
 //
 // ZQUATEV: Diagonalization of quaternionic matrices
+// File   : block.cc
 // Copyright (c) 2016, Toru Shiozaki (shiozaki@northwestern.edu)
 // All rights reserved.
 //
@@ -38,7 +39,8 @@ using namespace std;
 namespace ts {
 
 // implementation...
-void panel_update(const int, const int, complex<double>* const, complex<double>* const, complex<double>* const, complex<double>* const, const int, complex<double>* const);
+void panel_update(const int current_size, const int block_size, complex<double>* const D0, complex<double>* const D1,
+                  complex<double>* const Q0, complex<double>* const Q1, const int ld, const int original_size, complex<double>* const work);
 
 extern void transpose     (const int, const int, const complex<double>*, const int, complex<double>*, const int);
 extern void transpose_conj(const int, const int, const complex<double>*, const int, complex<double>*, const int);
@@ -70,7 +72,7 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
   unique_ptr<complex<double>[]> tmp_mem(new complex<double>[alloc_size]);
 
   for (int p = 0; p < n; p += nb)
-    panel_update(n-p, min(nb, n-p), D0+p*ld+p, D1+p*ld+p, Q0+p*ld+p, Q1+p*ld+p, ld, tmp_mem.get());
+    panel_update(n-p, min(nb, n-p), D0+p*ld+p, D1+p*ld+p, Q0+p, Q1+p, ld, n, tmp_mem.get());
 
 //assert(false);
 
@@ -100,7 +102,7 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
 void panel_update(const int n, const int nb,
                   complex<double>* const D0, complex<double>* const D1,
                   complex<double>* const Q0, complex<double>* const Q1,
-                  const int ld, complex<double>* const work_ptr) {
+                  const int ld, const int norig, complex<double>* const work_ptr) {
 
   if (n == 1) return;
 
@@ -408,51 +410,55 @@ void panel_update(const int n, const int nb,
 
     // now I can destroy Y and Z.
     auto ptr = YD.block(0,0);
-    const complex<double> one = 1.0;
 
-    // D^+W
-    SuperMatrix<1,3> DW(ptr, nrem, nb, nrem, nb, /*init*/false); // 3 used
-    zgemm3m_("C", "N", nrem, nb*2, n-1, 1.0, D0+nb*ld+1, ld, W.block(0,0), n-1, 0.0, DW.block(0,0), nrem);
-    transpose_conj(nb, nrem, D0+nb*ld+1, ld, DW.block(0,2), nrem);
-    // E^TW
-    SuperMatrix<1,3> EW(ptr+nrem*nb*3, nrem, nb, nrem, nb, /*init*/false); // 6 used
-    zgemm3m_("T", "N", nrem, nb*2, n-1, 1.0, D1+nb*ld+1, ld, W.block(0,0), n-1, 0.0, EW.block(0,0), nrem);
-    transpose(nb, nrem, D1+nb*ld+1, ld, EW.block(0,2), nrem);
+    {
+      // D^+W
+      SuperMatrix<1,3> DW(ptr, nrem, nb, nrem, nb, /*init*/false); // 3 used
+      zgemm3m_("C", "N", nrem, nb*2, n-1, 1.0, D0+nb*ld+1, ld, W.block(0,0), n-1, 0.0, DW.block(0,0), nrem);
+      transpose_conj(nb, nrem, D0+nb*ld+1, ld, DW.block(0,2), nrem);
+      // E^TW
+      SuperMatrix<1,3> EW(ptr+nrem*nb*3, nrem, nb, nrem, nb, /*init*/false); // 6 used
+      zgemm3m_("T", "N", nrem, nb*2, n-1, 1.0, D1+nb*ld+1, ld, W.block(0,0), n-1, 0.0, EW.block(0,0), nrem);
+      transpose(nb, nrem, D1+nb*ld+1, ld, EW.block(0,2), nrem);
 
-    // WT^+
-    SuperMatrix<1,3> WT(ptr+nrem*nb*6, nrem, nb, nrem, nb, /*init*/true); // 9 used
-    contract<_N, _C>(1.0, W.shift(nb-1), T.slice<0,2>(), WT);
-    for (int i = 0; i != nb; ++i) {
-      WT.data<0,0>(0,i) += conj(T.data<0,2>(i,nb-1));
-      WT.data<0,1>(0,i) += conj(T.data<1,2>(i,nb-1));
-      WT.data<0,2>(0,i) += conj(T.data<2,2>(i,nb-1));
+      // WT^+
+      SuperMatrix<1,3> WT(ptr+nrem*nb*6, nrem, nb, nrem, nb, /*init*/true); // 9 used
+      contract<_N, _C>(1.0, W.shift(nb-1), T.slice<0,2>(), WT);
+      for (int i = 0; i != nb; ++i) {
+        WT.data<0,0>(0,i) += conj(T.data<0,2>(i,nb-1));
+        WT.data<0,1>(0,i) += conj(T.data<1,2>(i,nb-1));
+        WT.data<0,2>(0,i) += conj(T.data<2,2>(i,nb-1));
+      }
+
+      // D <- WT^+W^+D
+      zgemm3m_("N", "C", nrem, nrem, nb*3, 1.0, WT.block(0,0), nrem, DW.block(0,0), nrem, 1.0, D0+nb*ld+nb, ld);
+      // E <- W^*T^T W^TE
+      conj_n(WT.block(0,0), nrem*nb*3);
+      zgemm3m_("N", "T", nrem, nrem, nb*3, 1.0, WT.block(0,0), nrem, EW.block(0,0), nrem, 1.0, D1+nb*ld+nb, ld);
+
+      // next first form WS^+
+      SuperMatrix<1,1> WS(ptr+nrem*nb*6, nrem, nb, nrem, nb, /*init*/true); // 7 used
+      contract<_N, _C>(1.0, W.shift(nb-1), S.slice<0,2>(), WS);
+      for (int i = 0; i != nb; ++i)
+        WS.data<0,0>(0,i) += conj(S.data<0,2>(i,nb-1));
+
+      // E^T WR
+      SuperMatrix<1,1> EWR(ptr+nrem*nb*7, nrem, nb, nrem, nb, /*init*/true); // 8 used
+      contract<_N, _N>(1.0, EW, R, EWR);
+      // -WS^+ R^T W^T E = -WS^+ (E^T WR)^T
+      zgemm3m_("N", "T", nrem, nrem, nb, -1.0, WS.block(0,0), nrem, EWR.block(0,0), nrem, 1.0, D0+nb*ld+nb, ld);
+
+       // D^+WR
+      SuperMatrix<1,1> DWR(ptr+nrem*nb*7, nrem, nb, nrem, nb, /*init*/true); // 8 used
+      contract<_N, _N>(1.0, DW, R, DWR);
+      // W^* S^T R^+ W^+D = W^* S^T(D^+ WR)^+
+      conj_n(WS.block(0,0), nrem*nb);
+      zgemm3m_("N", "C", nrem, nrem, nb, 1.0, WS.block(0,0), nrem, DWR.block(0,0), nrem, 1.0, D1+nb*ld+nb, ld);
     }
 
-    // D <- WT^+W^+D
-    zgemm3m_("N", "C", nrem, nrem, nb*3, 1.0, WT.block(0,0), nrem, DW.block(0,0), nrem, 1.0, D0+nb*ld+nb, ld);
-    // E <- W^*T^T W^TE
-    conj_n(WT.block(0,0), nrem*nb*3);
-    zgemm3m_("N", "T", nrem, nrem, nb*3, 1.0, WT.block(0,0), nrem, EW.block(0,0), nrem, 1.0, D1+nb*ld+nb, ld);
-
-    // next first form WS^+
-    SuperMatrix<1,1> WS(ptr+nrem*nb*6, nrem, nb, nrem, nb, /*init*/true); // 7 used
-    contract<_N, _C>(1.0, W.shift(nb-1), S.slice<0,2>(), WS);
-    for (int i = 0; i != nb; ++i)
-      WS.data<0,0>(0,i) += conj(S.data<0,2>(i,nb-1));
-
-    // E^T WR
-    SuperMatrix<1,1> EWR(ptr+nrem*nb*7, nrem, nb, nrem, nb, /*init*/true); // 8 used
-    contract<_N, _N>(1.0, EW, R, EWR);
-    // -WS^+ R^T W^T E = -WS^+ (E^T WR)^T
-    zgemm3m_("N", "T", nrem, nrem, nb, -1.0, WS.block(0,0), nrem, EWR.block(0,0), nrem, 1.0, D0+nb*ld+nb, ld);
-
-     // D^+WR
-    SuperMatrix<1,1> DWR(ptr+nrem*nb*7, nrem, nb, nrem, nb, /*init*/true); // 8 used
-    contract<_N, _N>(1.0, DW, R, DWR);
-    // W^* S^T R^+ W^+D = W^* S^T(D^+ WR)^+
-    conj_n(WS.block(0,0), nrem*nb);
-    zgemm3m_("N", "C", nrem, nrem, nb, 1.0, WS.block(0,0), nrem, DWR.block(0,0), nrem, 1.0, D1+nb*ld+nb, ld);
-
+    {
+      // update
+    }
   }
 
 }
