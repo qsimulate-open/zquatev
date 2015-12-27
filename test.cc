@@ -46,9 +46,6 @@ int main(int argc, char * argv[]) {
   const int n2 = n*2;
   const int nld = n*2;
 
-//bool printout = (n<=200);
-  bool printout = false;
-
   unique_ptr<complex<double>[]> A(new complex<double>[n*n]);
   unique_ptr<complex<double>[]> B(new complex<double>[n*n]);
   unique_ptr<complex<double>[]> C(new complex<double>[nld*n2]);
@@ -95,17 +92,6 @@ int main(int argc, char * argv[]) {
     unique_ptr<complex<double>[]> work(new complex<double>[lwork]);
     zheev_("V", "U", &n2, C.get(), &nld, eig.get(), work.get(), &lwork, rwork.get(), &info);
     if (info) throw runtime_error("zheev failed");
-    if (printout) {
-      for (int i = 0; i != n; ++i) {
-        cout << fixed << setw(30) << setprecision(15) << eig[i*2];
-        if (i % 5 == 4) cout << endl;
-      }
-      cout << endl;
-      for (int i = 0; i != n; ++i) {
-        cout << fixed << setw(30) << setprecision(15) << eig[i*2+1];
-        if (i % 5 == 4) cout << endl;
-      }
-    }
   }
 
   cout << " **** using zquartev **** " << endl;
@@ -113,14 +99,6 @@ int main(int argc, char * argv[]) {
   {
     int info = ts::zquatev(n2, D.get(), nld, eig2.get());
     if (info) throw runtime_error("zquatev failed");
-
-    if (printout) {
-      cout << endl;
-      for (int i = 0; i != n; ++i) {
-        cout << fixed << setw(30) << setprecision(15) << eig2[i];
-        if (i % 5 == 4) cout << endl;
-      }
-    }
 #if 0
     zgemm3m_("N", "N", n2, n2, n2, 1.0, E.get(), n2, D.get(), n2, 0.0, C.get(), n2);
     zgemm3m_("C", "N", n2, n2, n2, 1.0, D.get(), n2, C.get(), n2, 0.0, E.get(), n2);
