@@ -39,66 +39,43 @@ namespace ts {
 
 // implementation...
 
-void zquatev(const int n2, complex<double>* const D, const int ld2, double* const eig) {
-  assert(n2 % 2 == 0);
-  const int n = n2/2;
-  const int ld = ld2/2;
+void unblocked_update(const int n, complex<double>* const D0, complex<double>* const D1, complex<double>* const Q0, complex<double>* const Q1, const int ld,
+                      const int norig, complex<double>* const work) {
 
-  // rearrange data
-  complex<double>* const D0 = D;
-  complex<double>* const D1 = D + n*ld;
-  copy_n(D, ld2*n, D+ld2*n);
-  for (int i = 0; i != n; ++i) {
-    copy_n(D+ld2*n+i*ld2, n, D0+i*ld);
-    copy_n(D+ld2*n+i*ld2+n, n, D1+i*ld);
-  }
+  complex<double>* tmp =  work;
+  complex<double>* vec =  work + n;
+  complex<double>* cvec = work + n*2;
 
-  // identity matrix of n2 dimension
-  complex<double>* const Q0 = D + ld2*n;
-  complex<double>* const Q1 = D + ld2*n + ld*n;
-  fill_n(Q0, ld*n, 0.0);
-  fill_n(Q1, ld*n, 0.0);
-  for (int i = 0; i != n; ++i) Q0[i+ld*i] = 1.0;
-
-  unique_ptr<complex<double>[]> buf(new complex<double>[n2]);
-  unique_ptr<complex<double>[]> hout(new complex<double>[n2]);
-  unique_ptr<complex<double>[]> choutf(new complex<double>[n2]);
-
-
-  // Reference - arXiv:1203.6151v4
   for (int k = 0; k != n-1; ++k) {
     const int len = n-k-1;
     if (len > 1) {
-      copy_n(D1+k*ld+k+2, len-1, hout.get()+1);
+      copy_n(D1+k*ld+k+2, len-1, vec+1);
       complex<double> tau;
       complex<double> alpha = D1[k*ld+k+1];
-      hout[0] = 1.0;
-      zlarfg_(len, alpha, hout.get()+1, 1, tau);
+      vec[0] = 1.0;
+      zlarfg_(len, alpha, vec+1, 1, tau);
       tau = conj(tau);
 
-      for (int i = 0; i != len; ++i) choutf[i] = conj(hout[i]);
+      for (int i = 0; i != len; ++i) cvec[i] = conj(vec[i]);
 
       // 00
-      zgemv_("C", len, len+1, 1.0, D0+k+1+(k)*ld, ld, choutf.get(), 1, 0.0, buf.get(), 1);
-      zaxpy_(len, -conj(tau)*0.5*zdotc_(len, buf.get()+1, 1, choutf.get(), 1), choutf.get(), 1, buf.get()+1, 1);
-      zgerc_(len, len+1, -conj(tau), choutf.get(), 1, buf.get(), 1, D0+k+1+(k)*ld, ld);
-      zgeru_(len+1, len, -tau, buf.get(), 1, hout.get(), 1, D0+(k+1)*ld+(k), ld);
+      zgemv_("C", len, len+1, 1.0, D0+k+1+(k)*ld, ld, cvec, 1, 0.0, tmp, 1);
+      zaxpy_(len, -conj(tau)*0.5*zdotc_(len, tmp+1, 1, cvec, 1), cvec, 1, tmp+1, 1);
+      zgerc_(len, len+1, -conj(tau), cvec, 1, tmp, 1, D0+k+1+(k)*ld, ld);
+      zgeru_(len+1, len, -tau, tmp, 1, vec, 1, D0+(k+1)*ld+(k), ld);
 
       // 10
-      zgemv_("N", len+1, len, 1.0, D1+k+(k+1)*ld, ld, choutf.get(), 1, 0.0, buf.get(), 1);
-      zgeru_(len, len+1, tau, hout.get(), 1, buf.get(), 1, D1+k+1+(k)*ld, ld);
-      zgeru_(len+1, len, -tau, buf.get(), 1, hout.get(), 1, D1+(k+1)*ld+(k), ld);
+      zgemv_("N", len+1, len, 1.0, D1+k+(k+1)*ld, ld, cvec, 1, 0.0, tmp, 1);
+      zgeru_(len, len+1, tau, vec, 1, tmp, 1, D1+k+1+(k)*ld, ld);
+      zgeru_(len+1, len, -tau, tmp, 1, vec, 1, D1+(k+1)*ld+(k), ld);
 
       // 00-2
-      zgemv_("N", n, len, 1.0, Q0+(k+1)*n, n, choutf.get(), 1, 0.0, buf.get(), 1);
-      zgeru_(n, len, -tau, buf.get(), 1, hout.get(), 1, Q0+(k+1)*n, n);
+      zgemv_("N", n, len, 1.0, Q0+(k+1)*n, n, cvec, 1, 0.0, tmp, 1);
+      zgeru_(n, len, -tau, tmp, 1, vec, 1, Q0+(k+1)*n, n);
 
       // 10-2
-      zgemv_("N", n, len, 1.0, Q1+(k+1)*n, n, choutf.get(), 1, 0.0, buf.get(), 1);
-      zgeru_(n, len, -tau, buf.get(), 1, hout.get(), 1, Q1+(k+1)*n, n);
-
-      // lapack routine returns transformed subdiagonal element
-      assert(abs(alpha - D1[k*ld+k+1]) < 1.0e-10);
+      zgemv_("N", n, len, 1.0, Q1+(k+1)*n, n, cvec, 1, 0.0, tmp, 1);
+      zgeru_(n, len, -tau, tmp, 1, vec, 1, Q1+(k+1)*n, n);
     }
 
     // symplectic Givens rotation to clear out D(k+n, k)
@@ -122,59 +99,36 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
 
     // Householder to fix top half in column k
     if (len > 1) {
-      copy_n(D0+k*ld+k+2, len-1, hout.get()+1);
+      copy_n(D0+k*ld+k+2, len-1, vec+1);
       complex<double> tau;
       complex<double> alpha = D0[k*ld+k+1];
-      hout[0] = 1.0;
-      zlarfg_(len, alpha, hout.get()+1, 1, tau);
+      vec[0] = 1.0;
+      zlarfg_(len, alpha, vec+1, 1, tau);
       tau = conj(tau);
 
-      for (int i = 0; i != len; ++i) choutf[i] = conj(hout[i]);
+      for (int i = 0; i != len; ++i) cvec[i] = conj(vec[i]);
 
       // 00
-      zgemv_("C", len, len+1, 1.0, D0+k+1+(k)*ld, ld, hout.get(), 1, 0.0, buf.get(), 1);
-      zaxpy_(len, -tau*0.5*zdotc_(len, hout.get(), 1, buf.get()+1, 1), hout.get(), 1, buf.get()+1, 1);
-      zgerc_(len, len+1, -tau, hout.get(), 1, buf.get(), 1, D0+k+1+(k)*ld, ld);
-      zgerc_(len+1, len, -conj(tau), buf.get(), 1, hout.get(), 1, D0+(k+1)*ld+(k), ld);
+      zgemv_("C", len, len+1, 1.0, D0+k+1+(k)*ld, ld, vec, 1, 0.0, tmp, 1);
+      zaxpy_(len, -tau*0.5*zdotc_(len, vec, 1, tmp+1, 1), vec, 1, tmp+1, 1);
+      zgerc_(len, len+1, -tau, vec, 1, tmp, 1, D0+k+1+(k)*ld, ld);
+      zgerc_(len+1, len, -conj(tau), tmp, 1, vec, 1, D0+(k+1)*ld+(k), ld);
 
       // 01-1
-      zgemv_("T", len, len+1, 1.0, D1+k+1+(k)*ld, ld, hout.get(), 1, 0.0, buf.get(), 1);
-      zgeru_(len, len+1, -conj(tau), choutf.get(), 1, buf.get(), 1, D1+k+1+(k)*ld, ld);
-      zgerc_(len+1, len, conj(tau), buf.get(), 1, hout.get(), 1, D1+(k+1)*ld+(k), ld);
+      zgemv_("T", len, len+1, 1.0, D1+k+1+(k)*ld, ld, vec, 1, 0.0, tmp, 1);
+      zgeru_(len, len+1, -conj(tau), cvec, 1, tmp, 1, D1+k+1+(k)*ld, ld);
+      zgerc_(len+1, len, conj(tau), tmp, 1, vec, 1, D1+(k+1)*ld+(k), ld);
 
       // 00-2
-      zgemv_("N", n, len, 1.0, Q0+(k+1)*n, n, hout.get(), 1, 0.0, buf.get(), 1);
-      zgerc_(n, len, -conj(tau), buf.get(), 1, hout.get(), 1, Q0+(k+1)*n, n);
+      zgemv_("N", n, len, 1.0, Q0+(k+1)*n, n, vec, 1, 0.0, tmp, 1);
+      zgerc_(n, len, -conj(tau), tmp, 1, vec, 1, Q0+(k+1)*n, n);
 
       // 01-2
-      zgemv_("N", n, len, -1.0, Q1+(k+1)*n, n, hout.get(), 1, 0.0, buf.get(), 1);
-      zgerc_(n, len, conj(tau), buf.get(), 1, hout.get(), 1, Q1+(k+1)*n, n);
+      zgemv_("N", n, len, -1.0, Q1+(k+1)*n, n, vec, 1, 0.0, tmp, 1);
+      zgerc_(n, len, conj(tau), tmp, 1, vec, 1, Q1+(k+1)*n, n);
 
-      // lapack routine returns transformed subdiagonal element
-      assert(abs(alpha - D0[k*ld+k+1]) < 1.0e-10);
     }
 
-  }
-
-  // diagonalize this tri-diagonal matrix (this step is much cheaper than
-  // the Householder transformation above).
-  unique_ptr<complex<double>[]> Cmat(new complex<double>[n*n]);
-  unique_ptr<complex<double>[]> Work(new complex<double>[n]);
-  int info;
-  unique_ptr<double[]> rwork(new double[n*3]);
-  zhbev_("V", "L", n, 1, D0, ld+1, eig, Cmat.get(), n, Work.get(), rwork.get(), info);
-  if (info) throw runtime_error("zhbev failed in quaternion diagonalization");
-
-  // form the coefficient matrix in D
-  zgemm3m_("N", "N", n, n, n, 1.0, Q0, ld, Cmat.get(), n, 0.0, D, ld2);
-  zgemm3m_("N", "N", n, n, n, 1.0, Q1, ld, Cmat.get(), n, 0.0, D+ld, ld2);
-
-  // eigen vectors using symmetry
-  for (int i = 0; i != n; ++i) {
-    for (int j = 0; j != n; ++j) {
-       D[j+ld2*(i+n)] = -conj(D[j+ld+ld2*i]);
-       D[j+ld+ld2*(i+n)] = conj(D[j+ld2*i]);
-    }
   }
 }
 
