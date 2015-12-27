@@ -40,6 +40,9 @@ namespace ts {
 // implementation...
 void panel_update(const int, const int, complex<double>* const, complex<double>* const, complex<double>* const, complex<double>* const, const int, complex<double>* const);
 
+extern void transpose     (const int, const int, const complex<double>*, const int, complex<double>*, const int);
+extern void transpose_conj(const int, const int, const complex<double>*, const int, complex<double>*, const int);
+
 void zquatev(const int n2, complex<double>* const D, const int ld2, double* const eig) {
   assert(n2 % 2 == 0);
   const int n = n2/2;
@@ -62,8 +65,8 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
   for (int i = 0; i != n; ++i) Q0[i+ld*i] = 1.0;
 
   // TODO allocation will move out
-  const int nb = 10;
-  const size_t alloc_size = max(n-1,nb)*3 + nb*5 + 15*nb*nb + (4+10*nb)*(n-1) + /*TODO remove if possible*/2*nb*n;
+  const int nb = 20;
+  const size_t alloc_size = max(n-1,nb)*3 + nb*5 + 15*nb*nb + (max(4,nb)+10*nb)*(n-1);
   unique_ptr<complex<double>[]> tmp_mem(new complex<double>[alloc_size]);
 
   for (int p = 0; p < n; p += nb)
@@ -109,7 +112,7 @@ void panel_update(const int n, const int nb,
   SuperMatrix<3,3> T(ptr, nb, nb);          ptr += 9*nb*nb;
   SuperMatrix<3,1> R(ptr, nb, nb);          ptr += 3*nb*nb;
   SuperMatrix<1,3> S(ptr, nb, nb);          ptr += 3*nb*nb;
-  SuperMatrix<1,2> W(ptr, n-1, nb, n-1, 1); ptr += 2*(n-1)*nb /*TODO remove*/ + n*nb;
+  SuperMatrix<1,2> W(ptr, n-1, nb, n-1, 1); ptr += 2*(n-1)*nb;
   SuperMatrix<1,3> YD(ptr, n-1, nb, n-1, 1, true, true); ptr += 2*(n-1)*nb + n-1;
   SuperMatrix<1,3> ZD(ptr, n-1, nb, n-1, 1, true, true); ptr += 2*(n-1)*nb + n-1;
   SuperMatrix<1,3> YE(ptr, n-1, nb, n-1, 1, true, true); ptr += 2*(n-1)*nb + n-1;
@@ -391,22 +394,15 @@ void panel_update(const int n, const int nb,
   // finally update
   const int nrem = n-nb;
   if (nrem > 0) {
-    // TODO to faciliate the debug W is redefined here
-    SuperMatrix<1,3> Wn(W.block(0,0), n-1, nb, n-1, nb, /*init*/ false);
-    fill_n(Wn.block(0,2), (n-1)*nb, 0.0);
-    for (int i = 0; i != nb; ++i)
-      Wn.data<0,2>(i,i) = 1.0;
-
     // first update D and E.
     // Y^D + Z^E
     zaxpy_((n-1)*(nb*2+1),  1.0, ZE.block(0,0), 1, YD.block(0,0), 1);
     zaxpy_((n-1)*(nb*2+1), -1.0, ZD.block(0,0), 1, YE.block(0,0), 1);
     // Multiplied by W^+
     // TODO if we rearrange the storage of YD, YE etc, one can combine the following two ZGEMM calls...
-    zgemm3m_("N", "C", n-1, nrem, nb*2, 1.0, YD.block(0,0), n-1, Wn.block(0,0)+nb-1, n-1, 1.0, D0+nb*ld+1, ld);
-    zgemm3m_("N", "C", n-1, nrem, nb*2, 1.0, YE.block(0,0), n-1, Wn.block(0,0)+nb-1, n-1, 1.0, D1+nb*ld+1, ld);
+    zgemm3m_("N", "C", n-1, nrem, nb*2, 1.0, YD.block(0,0), n-1, W.block(0,0)+nb-1, n-1, 1.0, D0+nb*ld+1, ld);
+    zgemm3m_("N", "C", n-1, nrem, nb*2, 1.0, YE.block(0,0), n-1, W.block(0,0)+nb-1, n-1, 1.0, D1+nb*ld+1, ld);
     assert(YD.nptr(0) == n-1 && YD.mptr(2) == 1);
-    // TODO not quite verified
     zaxpy_(n-1, 1.0, YD.block(0,2), 1, D0+nb*ld+1, 1);
     zaxpy_(n-1, 1.0, YE.block(0,2), 1, D1+nb*ld+1, 1);
 
@@ -414,17 +410,24 @@ void panel_update(const int n, const int nb,
     auto ptr = YD.block(0,0);
     const complex<double> one = 1.0;
 
-
     // D^+W
     SuperMatrix<1,3> DW(ptr, nrem, nb, nrem, nb, /*init*/false); // 3 used
-    zgemm3m_("C", "N", nrem, nb*3, n-1, 1.0, D0+nb*ld+1, ld, Wn.block(0,0), n-1, 0.0, DW.block(0,0), nrem);
+    zgemm3m_("C", "N", nrem, nb*2, n-1, 1.0, D0+nb*ld+1, ld, W.block(0,0), n-1, 0.0, DW.block(0,0), nrem);
+    transpose_conj(nb, nrem, D0+nb*ld+1, ld, DW.block(0,2), nrem);
     // E^TW
     SuperMatrix<1,3> EW(ptr+nrem*nb*3, nrem, nb, nrem, nb, /*init*/false); // 6 used
-    zgemm3m_("T", "N", nrem, nb*3, n-1, 1.0, D1+nb*ld+1, ld, Wn.block(0,0), n-1, 0.0, EW.block(0,0), nrem);
+    zgemm3m_("T", "N", nrem, nb*2, n-1, 1.0, D1+nb*ld+1, ld, W.block(0,0), n-1, 0.0, EW.block(0,0), nrem);
+    transpose(nb, nrem, D1+nb*ld+1, ld, EW.block(0,2), nrem);
 
     // WT^+
     SuperMatrix<1,3> WT(ptr+nrem*nb*6, nrem, nb, nrem, nb, /*init*/true); // 9 used
-    contract<_N, _C>(1.0, Wn.shift(nb-1), T, WT);
+    contract<_N, _C>(1.0, W.shift(nb-1), T.slice<0,2>(), WT);
+    for (int i = 0; i != nb; ++i) {
+      WT.data<0,0>(0,i) += conj(T.data<0,2>(i,nb-1));
+      WT.data<0,1>(0,i) += conj(T.data<1,2>(i,nb-1));
+      WT.data<0,2>(0,i) += conj(T.data<2,2>(i,nb-1));
+    }
+
     // D <- WT^+W^+D
     zgemm3m_("N", "C", nrem, nrem, nb*3, 1.0, WT.block(0,0), nrem, DW.block(0,0), nrem, 1.0, D0+nb*ld+nb, ld);
     // E <- W^*T^T W^TE
@@ -433,7 +436,10 @@ void panel_update(const int n, const int nb,
 
     // next first form WS^+
     SuperMatrix<1,1> WS(ptr+nrem*nb*6, nrem, nb, nrem, nb, /*init*/true); // 7 used
-    contract<_N, _C>(1.0, Wn.shift(nb-1), S, WS);
+    contract<_N, _C>(1.0, W.shift(nb-1), S.slice<0,2>(), WS);
+    for (int i = 0; i != nb; ++i)
+      WS.data<0,0>(0,i) += conj(S.data<0,2>(i,nb-1));
+
     // E^T WR
     SuperMatrix<1,1> EWR(ptr+nrem*nb*7, nrem, nb, nrem, nb, /*init*/true); // 8 used
     contract<_N, _N>(1.0, EW, R, EWR);
