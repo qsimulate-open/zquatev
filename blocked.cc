@@ -62,11 +62,14 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
   for (int i = 0; i != n; ++i) Q0[i+ld*i] = 1.0;
 
   // TODO allocation will move out
-  const int nb = n;
-  const size_t alloc_size = max(n-1,nb)*3 + nb*5 + 15*nb*nb + (4+10*nb)*(n-1);
+  const int nb = 10;
+  const size_t alloc_size = max(n-1,nb)*3 + nb*5 + 15*nb*nb + (4+10*nb)*(n-1) + /*TODO remove if possible*/2*nb*n;
   unique_ptr<complex<double>[]> tmp_mem(new complex<double>[alloc_size]);
 
-  panel_update(n, nb, D0, D1, Q0, Q1, ld, tmp_mem.get());
+  for (int p = 0; p < n; p += nb)
+    panel_update(n-p, min(nb, n-p), D0+p*ld+p, D1+p*ld+p, Q0+p*ld+p, Q1+p*ld+p, ld, tmp_mem.get());
+
+//assert(false);
 
   // diagonalize this tri-diagonal matrix (this step is much cheaper than
   // the Householder transformation above).
@@ -96,6 +99,8 @@ void panel_update(const int n, const int nb,
                   complex<double>* const Q0, complex<double>* const Q1,
                   const int ld, complex<double>* const work_ptr) {
 
+  if (n == 1) return;
+
   complex<double>* ptr = work_ptr;
   auto work1_3n  = ptr; ptr += max(n-1,nb)*3;
   auto work2_3nb = ptr; ptr += nb*3;
@@ -104,7 +109,7 @@ void panel_update(const int n, const int nb,
   SuperMatrix<3,3> T(ptr, nb, nb);          ptr += 9*nb*nb;
   SuperMatrix<3,1> R(ptr, nb, nb);          ptr += 3*nb*nb;
   SuperMatrix<1,3> S(ptr, nb, nb);          ptr += 3*nb*nb;
-  SuperMatrix<1,2> W(ptr, n-1, nb, n-1, 1); ptr += 2*(n-1)*nb;
+  SuperMatrix<1,2> W(ptr, n-1, nb, n-1, 1); ptr += 2*(n-1)*nb /*TODO remove*/ + n*nb;
   SuperMatrix<1,3> YD(ptr, n-1, nb, n-1, 1, true, true); ptr += 2*(n-1)*nb + n-1;
   SuperMatrix<1,3> ZD(ptr, n-1, nb, n-1, 1, true, true); ptr += 2*(n-1)*nb + n-1;
   SuperMatrix<1,3> YE(ptr, n-1, nb, n-1, 1, true, true); ptr += 2*(n-1)*nb + n-1;
@@ -381,6 +386,67 @@ void panel_update(const int n, const int nb,
       }
       dnow[0] = alpha2;
     }
+  }
+
+  // finally update
+  const int nrem = n-nb;
+  if (nrem > 0) {
+    // TODO to faciliate the debug W is redefined here
+    SuperMatrix<1,3> Wn(W.block(0,0), n-1, nb, n-1, nb, /*init*/ false);
+    fill_n(Wn.block(0,2), (n-1)*nb, 0.0);
+    for (int i = 0; i != nb; ++i)
+      Wn.data<0,2>(i,i) = 1.0;
+
+    // first update D and E.
+    // Y^D + Z^E
+    zaxpy_((n-1)*(nb*2+1),  1.0, ZE.block(0,0), 1, YD.block(0,0), 1);
+    zaxpy_((n-1)*(nb*2+1), -1.0, ZD.block(0,0), 1, YE.block(0,0), 1);
+    // Multiplied by W^+
+    // TODO if we rearrange the storage of YD, YE etc, one can combine the following two ZGEMM calls...
+    zgemm3m_("N", "C", n-1, nrem, nb*2, 1.0, YD.block(0,0), n-1, Wn.block(0,0)+nb-1, n-1, 1.0, D0+nb*ld+1, ld);
+    zgemm3m_("N", "C", n-1, nrem, nb*2, 1.0, YE.block(0,0), n-1, Wn.block(0,0)+nb-1, n-1, 1.0, D1+nb*ld+1, ld);
+    assert(YD.nptr(0) == n-1 && YD.mptr(2) == 1);
+    // TODO not quite verified
+    zaxpy_(n-1, 1.0, YD.block(0,2), 1, D0+nb*ld+1, 1);
+    zaxpy_(n-1, 1.0, YE.block(0,2), 1, D1+nb*ld+1, 1);
+
+    // now I can destroy Y and Z.
+    auto ptr = YD.block(0,0);
+    const complex<double> one = 1.0;
+
+
+    // D^+W
+    SuperMatrix<1,3> DW(ptr, nrem, nb, nrem, nb, /*init*/false); // 3 used
+    zgemm3m_("C", "N", nrem, nb*3, n-1, 1.0, D0+nb*ld+1, ld, Wn.block(0,0), n-1, 0.0, DW.block(0,0), nrem);
+    // E^TW
+    SuperMatrix<1,3> EW(ptr+nrem*nb*3, nrem, nb, nrem, nb, /*init*/false); // 6 used
+    zgemm3m_("T", "N", nrem, nb*3, n-1, 1.0, D1+nb*ld+1, ld, Wn.block(0,0), n-1, 0.0, EW.block(0,0), nrem);
+
+    // WT^+
+    SuperMatrix<1,3> WT(ptr+nrem*nb*6, nrem, nb, nrem, nb, /*init*/true); // 9 used
+    contract<_N, _C>(1.0, Wn.shift(nb-1), T, WT);
+    // D <- WT^+W^+D
+    zgemm3m_("N", "C", nrem, nrem, nb*3, 1.0, WT.block(0,0), nrem, DW.block(0,0), nrem, 1.0, D0+nb*ld+nb, ld);
+    // E <- W^*T^T W^TE
+    conj_n(WT.block(0,0), nrem*nb*3);
+    zgemm3m_("N", "T", nrem, nrem, nb*3, 1.0, WT.block(0,0), nrem, EW.block(0,0), nrem, 1.0, D1+nb*ld+nb, ld);
+
+    // next first form WS^+
+    SuperMatrix<1,1> WS(ptr+nrem*nb*6, nrem, nb, nrem, nb, /*init*/true); // 7 used
+    contract<_N, _C>(1.0, Wn.shift(nb-1), S, WS);
+    // E^T WR
+    SuperMatrix<1,1> EWR(ptr+nrem*nb*7, nrem, nb, nrem, nb, /*init*/true); // 8 used
+    contract<_N, _N>(1.0, EW, R, EWR);
+    // -WS^+ R^T W^T E = -WS^+ (E^T WR)^T
+    zgemm3m_("N", "T", nrem, nrem, nb, -1.0, WS.block(0,0), nrem, EWR.block(0,0), nrem, 1.0, D0+nb*ld+nb, ld);
+
+     // D^+WR
+    SuperMatrix<1,1> DWR(ptr+nrem*nb*7, nrem, nb, nrem, nb, /*init*/true); // 8 used
+    contract<_N, _N>(1.0, DW, R, DWR);
+    // W^* S^T R^+ W^+D = W^* S^T(D^+ WR)^+
+    conj_n(WS.block(0,0), nrem*nb);
+    zgemm3m_("N", "C", nrem, nrem, nb, 1.0, WS.block(0,0), nrem, DWR.block(0,0), nrem, 1.0, D1+nb*ld+nb, ld);
+
   }
 
 }
