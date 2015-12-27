@@ -45,7 +45,7 @@ void panel_update(const int current_size, const int block_size, complex<double>*
 extern void transpose     (const int, const int, const complex<double>*, const int, complex<double>*, const int);
 extern void transpose_conj(const int, const int, const complex<double>*, const int, complex<double>*, const int);
 
-void zquatev(const int n2, complex<double>* const D, const int ld2, double* const eig) {
+int zquatev(const int n2, complex<double>* const D, const int ld2, double* const eig) {
   assert(n2 % 2 == 0);
   const int n = n2/2;
   const int ld = ld2/2;
@@ -78,16 +78,21 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
 
   // diagonalize this tri-diagonal matrix (this step is much cheaper than
   // the Householder transformation above).
-  unique_ptr<complex<double>[]> Cmat(new complex<double>[n*n]);
   auto work1 = tmp_mem.get();
   auto work2 = work1 + n;
+  auto work3 = work2 + n;
+  for (int i = 0; i != n; ++i) {
+    work3[2*i] = D0[i+i*ld];
+    work3[2*i+1] = D0[i+i*ld+1];
+  }
   int info;
-  zhbev_("V", "L", n, 1, D0, ld+1, eig, Cmat.get(), n, work1, reinterpret_cast<double*>(work2), info);
-  if (info) throw runtime_error("zhbev failed in quaternion diagonalization");
+  zhbev_("V", "L", n, 1, work3, 2, eig, D0+ld, ld2, work1, reinterpret_cast<double*>(work2), info);
 
   // form the coefficient matrix in D
-  zgemm3m_("N", "N", n, n, n, 1.0, Q0, ld, Cmat.get(), n, 0.0, D, ld2);
-  zgemm3m_("N", "N", n, n, n, 1.0, Q1, ld, Cmat.get(), n, 0.0, D+ld, ld2);
+  zgemm3m_("N", "N", n, n, n, 1.0, Q0, ld, D+ld, n, 0.0, D, ld2);
+  for (int i = 0; i != n; ++i)
+    copy_n(D+ld+i*ld2, n, Q0+i*ld);
+  zgemm3m_("N", "N", n, n, n, 1.0, Q1, ld, Q0, n, 0.0, D+ld, ld2);
 
   // eigen vectors using symmetry
   for (int i = 0; i != n; ++i) {
@@ -96,6 +101,7 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
        D[j+ld+ld2*(i+n)] = conj(D[j+ld2*i]);
     }
   }
+  return info;
 }
 
 
@@ -456,9 +462,20 @@ void panel_update(const int n, const int nb,
       zgemm3m_("N", "C", nrem, nrem, nb, 1.0, WS.block(0,0), nrem, DWR.block(0,0), nrem, 1.0, D1+nb*ld+nb, ld);
     }
 
+    // update
+#if 0
     {
-      // update
+      // D^+W
+      SuperMatrix<1,3> DW(ptr, norig-1, nb, norig-1, nb, /*init*/false); // 3 used
+      zgemm3m_("C", "N", norig-1, nb*2, n-1, 1.0, Q0+1, ld, W.block(0,0), n-1, 0.0, DW.block(0,0), norig-1);
+      transpose_conj(nb, norig-1, Q0+1, ld, DW.block(0,2), norig-1);
+      // E^TW
+      SuperMatrix<1,3> EW(ptr+nrem*nb*3, nrem, nb, nrem, nb, /*init*/false); // 6 used
+      zgemm3m_("T", "N", nrem, nb*2, n-1, 1.0, D1+nb*ld+1, ld, W.block(0,0), n-1, 0.0, EW.block(0,0), nrem);
+      transpose(nb, nrem, D1+nb*ld+1, ld, EW.block(0,2), nrem);
+
     }
+#endif
   }
 
 }

@@ -111,7 +111,8 @@ int main(int argc, char * argv[]) {
   cout << " **** using zquartev **** " << endl;
   auto time1 = chrono::high_resolution_clock::now();
   {
-    ts::zquatev(n2, D.get(), nld, eig2.get());
+    int info = ts::zquatev(n2, D.get(), nld, eig2.get());
+    if (info) throw runtime_error("zquatev failed");
 
     if (printout) {
       cout << endl;
