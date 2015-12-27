@@ -111,7 +111,7 @@ void panel_update(const int n, const int nb,
   SuperMatrix<1,3> ZE(ptr, n-1, nb, n-1, 1, true, true);
 
   // TODO once the paper is out, add comments with equation numbers.
-  for (int k = 0; k != n; ++k) {
+  for (int k = 0; k != nb; ++k) {
     // prepare the k-th column using compact WY-like representation
     if (k > 0) {
       SuperMatrix<1,1> d(D0+k*ld+1, n-1, 1, n-1, 1, false);
@@ -137,6 +137,8 @@ void panel_update(const int n, const int nb,
       auto es = e.shift(sf);
       auto Ws = W.shift(sf);
       SuperMatrix<3,1> y1(work1_3n, k, 1, k, 1);
+      y1.nptr(0) = W.mptr(0);
+      y1.nptr(1) = W.mptr(1);
       auto y1s = y1.trunc<2>();
       contract<_C>(1.0, W, d, y1s);
       zaxpy_(k, 1.0, d.block(0,0), 1, y1.ptr<2,0>(0,0), 1);
@@ -155,6 +157,8 @@ void panel_update(const int n, const int nb,
       y4.conj();
 
       SuperMatrix<3,1> y5(work2_3nb, k, 1, k, 1);
+      y5.nptr(0) = W.mptr(0);
+      y5.nptr(1) = W.mptr(1);
       auto y5s = y5.trunc<2>();
       contract<_T>(1.0, W, e, y5s);
       zaxpy_(k, 1.0, e.block(0,0), 1, y5.ptr<2,0>(0,0), 1);
