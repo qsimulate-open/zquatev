@@ -37,37 +37,8 @@ using namespace std;
 
 namespace ts {
 
-// TODO Debug
-void print(string label, const SuperMatrix<3,3>& T, const SuperMatrix<1,3>& W,
-                         const SuperMatrix<3,1>& R, const SuperMatrix<1,3>& S, const int n) {
-
-  unique_ptr<complex<double>[]> xY1(new complex<double>[n*n]);
-  unique_ptr<complex<double>[]> xY2(new complex<double>[n*n]);
-  unique_ptr<complex<double>[]> xX(new complex<double>[n*n]);
-  unique_ptr<complex<double>[]> xW2(new complex<double>[3*n*n]);
-  SuperMatrix<1,1> X(xX.get(), n, n, n, n);
-  SuperMatrix<3,1> W2(xW2.get(), n, n);
-  SuperMatrix<1,1> Y1(xY1.get(), n, n);
-  SuperMatrix<1,1> Y2(xY2.get(), n, n);
-
-  {
-    cout << setprecision(4) << "------ Q0 reconst " << label << endl;
-    contract<_N,_C> (1.0, T, W, W2);
-    contract<_N,_N>(1.0, W, W2, X);
-    X.print();
-  }
-  {
-    cout << setprecision(4) << "------ Q1 reconst " << label << endl;
-    X.reset();
-    contract<_N,_N>(1.0, W, R, Y1);
-    contract<_N,_C>(1.0, W, S, Y2);
-    Y1.conj();
-    contract<_N,_C>(-1.0, Y1, Y2, X);
-    X.print();
-  }
-}
-
 // implementation...
+void panel_update(const int, const int, complex<double>* const, complex<double>* const, complex<double>* const, complex<double>* const, const int, complex<double>* const);
 
 void zquatev(const int n2, complex<double>* const D, const int ld2, double* const eig) {
   assert(n2 % 2 == 0);
@@ -90,35 +61,54 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
   fill_n(Q1, ld*n, 0.0);
   for (int i = 0; i != n; ++i) Q0[i+ld*i] = 1.0;
 
-  // will be updated
+  // TODO allocation will move out
   const int nb = n;
+  const size_t alloc_size = max(n-1,nb)*3 + nb*5 + 15*nb*nb + (4+10*nb)*(n-1);
+  unique_ptr<complex<double>[]> tmp_mem(new complex<double>[alloc_size]);
 
-  unique_ptr<complex<double>[]> buf(new complex<double>[max(n-1,nb)*3]);
-  unique_ptr<complex<double>[]> buf2(new complex<double>[nb*3]);
-  unique_ptr<complex<double>[]> buf3(new complex<double>[nb]);
-  unique_ptr<complex<double>[]> buf4(new complex<double>[nb]);
+  panel_update(n, nb, D0, D1, Q0, Q1, ld, tmp_mem.get());
 
-  auto work1_3n  = buf.get();
-  auto work2_3nb = buf2.get();
-  auto work3_nb  = buf3.get();
-  auto work4_nb  = buf4.get();
+  // diagonalize this tri-diagonal matrix (this step is much cheaper than
+  // the Householder transformation above).
+  unique_ptr<complex<double>[]> Cmat(new complex<double>[n*n]);
+  auto work1 = tmp_mem.get();
+  auto work2 = work1 + n;
+  int info;
+  zhbev_("V", "L", n, 1, D0, ld+1, eig, Cmat.get(), n, work1, reinterpret_cast<double*>(work2), info);
+  if (info) throw runtime_error("zhbev failed in quaternion diagonalization");
 
-  unique_ptr<complex<double>[]> xT(new complex<double>[9*nb*nb]);
-  unique_ptr<complex<double>[]> xR(new complex<double>[3*nb*nb]);
-  unique_ptr<complex<double>[]> xS(new complex<double>[3*nb*nb]);
-  unique_ptr<complex<double>[]> xW(new complex<double>[2*nb*n]);
-  unique_ptr<complex<double>[]> xYD(new complex<double>[(1+2*nb)*n]);
-  unique_ptr<complex<double>[]> xYE(new complex<double>[(1+2*nb)*n]);
-  unique_ptr<complex<double>[]> xZD(new complex<double>[(1+2*nb)*n]);
-  unique_ptr<complex<double>[]> xZE(new complex<double>[(1+2*nb)*n]);
-  SuperMatrix<3,3> T(xT.get(), nb, nb);
-  SuperMatrix<3,1> R(xR.get(), nb, nb);
-  SuperMatrix<1,3> S(xS.get(), nb, nb);
-  SuperMatrix<1,2> W(xW.get(), n-1, nb, n-1, 1);
-  SuperMatrix<1,3> YD(xYD.get(), n-1, nb, n-1, 1, true, true);
-  SuperMatrix<1,3> ZD(xZD.get(), n-1, nb, n-1, 1, true, true);
-  SuperMatrix<1,3> YE(xYE.get(), n-1, nb, n-1, 1, true, true);
-  SuperMatrix<1,3> ZE(xZE.get(), n-1, nb, n-1, 1, true, true);
+  // form the coefficient matrix in D
+  zgemm3m_("N", "N", n, n, n, 1.0, Q0, ld, Cmat.get(), n, 0.0, D, ld2);
+  zgemm3m_("N", "N", n, n, n, 1.0, Q1, ld, Cmat.get(), n, 0.0, D+ld, ld2);
+
+  // eigen vectors using symmetry
+  for (int i = 0; i != n; ++i) {
+    for (int j = 0; j != n; ++j) {
+       D[j+ld2*(i+n)] = -conj(D[j+ld+ld2*i]);
+       D[j+ld+ld2*(i+n)] = conj(D[j+ld2*i]);
+    }
+  }
+}
+
+
+void panel_update(const int n, const int nb,
+                  complex<double>* const D0, complex<double>* const D1,
+                  complex<double>* const Q0, complex<double>* const Q1,
+                  const int ld, complex<double>* const work_ptr) {
+
+  complex<double>* ptr = work_ptr;
+  auto work1_3n  = ptr; ptr += max(n-1,nb)*3;
+  auto work2_3nb = ptr; ptr += nb*3;
+  auto work3_nb  = ptr; ptr += nb;
+  auto work4_nb  = ptr; ptr += nb;
+  SuperMatrix<3,3> T(ptr, nb, nb);          ptr += 9*nb*nb;
+  SuperMatrix<3,1> R(ptr, nb, nb);          ptr += 3*nb*nb;
+  SuperMatrix<1,3> S(ptr, nb, nb);          ptr += 3*nb*nb;
+  SuperMatrix<1,2> W(ptr, n-1, nb, n-1, 1); ptr += 2*(n-1)*nb;
+  SuperMatrix<1,3> YD(ptr, n-1, nb, n-1, 1, true, true); ptr += 2*(n-1)*nb + n-1;
+  SuperMatrix<1,3> ZD(ptr, n-1, nb, n-1, 1, true, true); ptr += 2*(n-1)*nb + n-1;
+  SuperMatrix<1,3> YE(ptr, n-1, nb, n-1, 1, true, true); ptr += 2*(n-1)*nb + n-1;
+  SuperMatrix<1,3> ZE(ptr, n-1, nb, n-1, 1, true, true);
 
   // TODO once the paper is out, add comments with equation numbers.
   for (int k = 0; k != n; ++k) {
@@ -388,26 +378,7 @@ void zquatev(const int n2, complex<double>* const D, const int ld2, double* cons
       dnow[0] = alpha2;
     }
   }
-//print("tridiagonalization", T, W, R, S, n);
 
-  // diagonalize this tri-diagonal matrix (this step is much cheaper than
-  // the Householder transformation above).
-  unique_ptr<complex<double>[]> Cmat(new complex<double>[n*n]);
-  int info;
-  zhbev_("V", "L", n, 1, D0, ld+1, eig, Cmat.get(), n, work1_3n, reinterpret_cast<double*>(work1_3n+n), info);
-  if (info) throw runtime_error("zhbev failed in quaternion diagonalization");
-
-  // form the coefficient matrix in D
-  zgemm3m_("N", "N", n, n, n, 1.0, Q0, ld, Cmat.get(), n, 0.0, D, ld2);
-  zgemm3m_("N", "N", n, n, n, 1.0, Q1, ld, Cmat.get(), n, 0.0, D+ld, ld2);
-
-  // eigen vectors using symmetry
-  for (int i = 0; i != n; ++i) {
-    for (int j = 0; j != n; ++j) {
-       D[j+ld2*(i+n)] = -conj(D[j+ld+ld2*i]);
-       D[j+ld+ld2*(i+n)] = conj(D[j+ld2*i]);
-    }
-  }
 }
 
 }
