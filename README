@@ -1,7 +1,7 @@
 ZQUATEV
 
-the code to diagonalize large quaternionic matrices to yield symmetry-adapted eigenvectors
-==========================================================================================
+Code to diagonalize large quaternionic matrices to yield symmetry-adapted eigenvectors
+======================================================================================
 
 Author:
     Toru Shiozaki (shiozaki@northwestern.edu)
