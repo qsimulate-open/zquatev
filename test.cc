@@ -116,6 +116,9 @@ int main(int argc, char * argv[]) {
   cout << endl;
   cout << " zheev   : " << setw(10) << fixed << setprecision(2) << chrono::duration_cast<chrono::milliseconds>(time1-time0).count()*0.001 << endl;
   cout << " zquartev: " << setw(10) << fixed << setprecision(2) << chrono::duration_cast<chrono::milliseconds>(time2-time1).count()*0.001 << endl;
+#ifndef NDEBUG
+  cout << "   * You have run this code in the debug mode. For timing comparision, please use -O3 -DNDEBUG" << endl;
+#endif
 
   return 0;
 }
