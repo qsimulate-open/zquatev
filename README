@@ -8,6 +8,9 @@ Author:
 
 License:
     FreeBSD
+    
+Reference:
+    arXiv:1512.08934 (http://arxiv.org/abs/1512.08934)
 
 Synopsis:
     This program diagonalizes quaternionic matrices,
