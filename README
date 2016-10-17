@@ -18,8 +18,7 @@ Synopsis:
     (  A  -B* )
     (  B   A* )
 
-    where A is Hermitian and B is anti-Hermitian. Only the left half of the matrix
-    will be referenced as an input.
+    which is Hermitian. Only the left half of the matrix will be referenced as an input.
 
     This matrix has doubly-degenerate eigenvalues, and there is a set of
     eivenvectors that has the same symmetry property:
