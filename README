@@ -10,7 +10,8 @@ License:
     FreeBSD
     
 Reference:
-    arXiv:1512.08934 (http://arxiv.org/abs/1512.08934)
+    T. Shiozaki, Molecular Physics 115, 5-12 (2017)
+    DOI: 10.1080/00268976.2016.1158423, arXiv:1512.08934 (http://arxiv.org/abs/1512.08934)
 
 Synopsis:
     This program diagonalizes quaternionic matrices,

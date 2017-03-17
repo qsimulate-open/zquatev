@@ -1,5 +1,5 @@
 INCLUDE  = -I.
-INCLUDE += -DHAVE_MKL_H
+INCLUDE += -DHAVE_ZGEMM3M
 #LIBS     = -framework Accelerate
 LIBS     = -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread
 #LIBS     = -mkl=parallel # works with recent Intel compilers
