@@ -34,11 +34,29 @@
 
 #include <complex>
 
+#ifdef HAVE_MKL
+
+#  ifndef HAVE_ZGEMM3M
+#    define HAVE_ZGEMM3M
+#  endif
+
+#  define DOT_NO_RETURN
+
+#endif
+  
+
+
 // blas
 extern "C" {
 
  void zscal_(const int*, const std::complex<double>*, std::complex<double>*, const int*);
+
+#ifdef DOT_NO_RETURN
  void zdotc_(std::complex<double>*, const int*, const std::complex<double>*, const int*, const std::complex<double>*, const int*);
+#else
+ std::complex<double> zdotc_(const int*, const std::complex<double>*, const int*, const std::complex<double>*, const int*);
+#endif
+
  void zaxpy_(const int*, const std::complex<double>*, const std::complex<double>*, const int*, std::complex<double>*, const int*);
  void zgemv_(const char*, const int*, const int*, const std::complex<double>*, const std::complex<double>*, const int*, const std::complex<double>*, const int*,
              const std::complex<double>*, std::complex<double>*, const int*);
@@ -78,6 +96,7 @@ namespace {
                const std::complex<double> alpha, const std::complex<double>* a, const int lda, const std::complex<double>* b, const int ldb,
                const std::complex<double> beta, std::complex<double>* c, const int ldc) { ::zgemm3m_(transa,transb,&m,&n,&k,&alpha,a,&lda,b,&ldb,&beta,c,&ldc); }
 #else
+
  void zgemm3m_(const char* transa, const char* transb, const int m, const int n, const int k,
              const std::complex<double> alpha, const std::complex<double>* a, const int lda, const std::complex<double>* b, const int ldb,
              const std::complex<double> beta, std::complex<double>* c, const int ldc) { ::zgemm_(transa,transb,&m,&n,&k,&alpha,a,&lda,b,&ldb,&beta,c,&ldc); }
@@ -86,9 +105,13 @@ namespace {
  void zaxpy_(const int a, const std::complex<double> b, const std::complex<double>* c, const int d, std::complex<double>* e, const int f) { ::zaxpy_(&a,&b,c,&d,e,&f); }
  void zscal_(const int a, const std::complex<double> b, std::complex<double>* c, const int d) { ::zscal_(&a, &b, c, &d); }
  std::complex<double> zdotc_(const int b, const std::complex<double>* c, const int d, const std::complex<double>* e, const int f) {
+#ifdef DOT_NO_RETURN
    std::complex<double> a;
    ::zdotc_(&a,&b,c,&d,e,&f);
    return a;
+#else
+   return ::zdotc_(&b,c,&d,e,&f);
+#endif
  }
  void zheev_(const char* a, const char* b, const int c, std::complex<double>* d, const int e, double* f, std::complex<double>* g, const int h, double* i, int& j)
              { ::zheev_(a,b,&c,d,&e,f,g,&h,i,&j); }
