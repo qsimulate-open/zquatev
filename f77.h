@@ -38,7 +38,11 @@
 extern "C" {
 
  void zscal_(const int*, const std::complex<double>*, std::complex<double>*, const int*);
+#ifndef ZDOT_RETURN
  void zdotc_(std::complex<double>*, const int*, const std::complex<double>*, const int*, const std::complex<double>*, const int*);
+#else
+ std::complex<double> zdotc_(const int*, const std::complex<double>*, const int*, const std::complex<double>*, const int*);
+#endif
  void zaxpy_(const int*, const std::complex<double>*, const std::complex<double>*, const int*, std::complex<double>*, const int*);
  void zgemv_(const char*, const int*, const int*, const std::complex<double>*, const std::complex<double>*, const int*, const std::complex<double>*, const int*,
              const std::complex<double>*, std::complex<double>*, const int*);
@@ -85,11 +89,15 @@ namespace {
 
  void zaxpy_(const int a, const std::complex<double> b, const std::complex<double>* c, const int d, std::complex<double>* e, const int f) { ::zaxpy_(&a,&b,c,&d,e,&f); }
  void zscal_(const int a, const std::complex<double> b, std::complex<double>* c, const int d) { ::zscal_(&a, &b, c, &d); }
+#ifndef ZDOT_RETURN
  std::complex<double> zdotc_(const int b, const std::complex<double>* c, const int d, const std::complex<double>* e, const int f) {
    std::complex<double> a;
    ::zdotc_(&a,&b,c,&d,e,&f);
    return a;
  }
+#else
+ std::complex<double> zdotc_(const int a, const std::complex<double>* b, const int c, const std::complex<double>* d, const int e) { return ::zdotc_(&a,b,&c,d,&e); }
+#endif
  void zheev_(const char* a, const char* b, const int c, std::complex<double>* d, const int e, double* f, std::complex<double>* g, const int h, double* i, int& j)
              { ::zheev_(a,b,&c,d,&e,f,g,&h,i,&j); }
  void zhbev_(const char* a, const char* b, const int c, const int d, std::complex<double>* e, const int f, double* g, std::complex<double>* h, const int i,
